@@ -52,6 +52,11 @@ step-by-step plan.
   server-only modules (e.g. `lib/env.ts`).
 - `lib/proposales/`: API client and response schemas. `lib/proposals/`: the internal proposal
   model (pure normalization) and the server-only service that the pages call.
+- `lib/recommendations/`: model output schema, deterministic validation, prompt, mock mode and
+  the server-only engine (OpenAI through the Vercel AI SDK; `gpt-5-mini` by default). The model
+  never supplies prices. `lib/revenue/`: pure revenue math in integer cents.
+- `RECOMMENDATIONS_MODE=mock` avoids OpenAI calls during UI work. Never run live AI calls
+  without need; each costs money.
 - `lib/catalog/`: rate card schema, pure catalog join (content library + rate card, matched on
   `variation_id`) and the server-only `getCatalog`. A product without a rate-card entry has
   `price: null`, never 0.
@@ -65,8 +70,8 @@ step-by-step plan.
 
 - Reusable UI lives in `components/ui/` (import from `@/components/ui`): `Button`/`buttonStyles`,
   `Input`, `FieldLabel`, `Card`/`cardStyles`, `Chip`/`ChipGroup`, `Badge`, `Dot`, `Alert`,
-  `EmptyState`, `Skeleton`, `Page`, `PageHeader`, `SectionTitle`, `Table*` primitives, `Totals` and
-  `LocalDate` (timestamps in the viewer's time zone; never format timestamps in UTC on the server).
+  `EmptyState`, `Skeleton`, `Page`, `PageHeader`, `SectionTitle`, `Table*` primitives, `Totals`, `Spinner`, `LevelBars`
+  and `LocalDate` (timestamps in the viewer's time zone; never format timestamps in UTC on the server).
 - Prefer chips (pill links or choices) over a native `<select>`: the open menu of a native select
   cannot be styled and looks browser-default.
 - Pages and feature components compose these. Do not hand-style buttons, fields, cards, badges or

@@ -1,0 +1,157 @@
+import { z } from "zod";
+import type { CatalogProduct } from "@/lib/catalog/model";
+import type { LineItem } from "@/lib/proposals/model";
+
+export const RECOMMENDATION_TYPES = ["cross_sell", "upgrade", "extension"] as const;
+export const CONFIDENCE_LEVELS = ["low", "medium", "high"] as const;
+export const MAX_RECOMMENDATIONS = 3;
+const MAX_QUANTITY = 10_000;
+
+export type RecommendationType = (typeof RECOMMENDATION_TYPES)[number];
+export type Confidence = (typeof CONFIDENCE_LEVELS)[number];
+
+/**
+ * What the model returns. Deliberately lenient (plain numbers, nullable strings): a single bad
+ * suggestion is dropped by `validateRecommendations` instead of failing the whole response.
+ * It contains no price fields, so the model cannot supply prices.
+ */
+export const modelOutputSchema = z.object({
+  recommendations: z.array(
+    z.object({
+      type: z.enum(RECOMMENDATION_TYPES),
+      productId: z
+        .number()
+        .describe("Catalog product id to add (cross_sell), upgrade to (upgrade), or extend (extension)"),
+      lineItemId: z
+        .string()
+        .nullable()
+        .describe("Existing line item id for upgrade or extension; null for cross_sell"),
+      quantity: z
+        .number()
+        .describe("Units to add (cross_sell, extension) or units of the replacement product (upgrade)"),
+      quantityRationale: z
+        .string()
+        .describe("The quantity as a compact multiplication of event facts that equals `quantity`, e.g. '80 guests × 2 days' or '40 rooms'"),
+      explanation: z.string().describe("1-2 sentences for the salesperson: why this fits this event"),
+      confidence: z.enum(CONFIDENCE_LEVELS).describe("Qualitative fit, not a probability of conversion"),
+    }),
+  ),
+});
+
+export type ModelOutput = z.infer<typeof modelOutputSchema>;
+
+export type Recommendation = {
+  id: string;
+  type: RecommendationType;
+  product: CatalogProduct;
+  /** The line item being upgraded or extended; null for cross-sells. */
+  lineItem: LineItem | null;
+  quantity: number;
+  /** Compact label for the quantity (e.g. "80 guests × 2 days"), only if its numbers multiply to `quantity`. */
+  quantityLabel: string | null;
+  explanation: string;
+  confidence: Confidence;
+};
+
+export type DropReason =
+  | "unknown_product"
+  | "unknown_line_item"
+  | "already_in_proposal"
+  | "line_item_mismatch"
+  | "not_an_upgrade"
+  | "category_mismatch"
+  | "invalid_quantity"
+  | "missing_explanation"
+  | "duplicate"
+  | "over_limit";
+
+/**
+ * Accepts the model's quantity expression only when it is a plain product of numbered terms
+ * ("80 guests × 2 days") whose numbers multiply to exactly `quantity`; otherwise null.
+ */
+export function quantityLabel(expression: string, quantity: number): string | null {
+  const text = expression.trim().replace(/\s+/g, " ");
+  if (!text || text.length > 60) return null;
+  const terms = text.split(/\s*[×*]\s*|\s+x\s+/);
+  let product = 1;
+  for (const term of terms) {
+    const match = /^(\d+(?:\.\d+)?)(?:\s+[\p{L}][\p{L}-]*){0,2}$/u.exec(term);
+    if (!match) return null;
+    product *= Number(match[1]);
+  }
+  return product === quantity ? terms.join(" × ") : null;
+}
+
+/**
+ * Deterministic guardrails on model output. Keeps only suggestions that reference real catalog
+ * products and line items, are internally consistent, and are not duplicates; caps at three.
+ */
+export function validateRecommendations(
+  output: ModelOutput,
+  context: { catalog: CatalogProduct[]; lineItems: LineItem[] },
+): { recommendations: Recommendation[]; dropped: { index: number; reason: DropReason }[] } {
+  const products = new Map(context.catalog.map((p) => [p.variationId, p]));
+  const lines = new Map(context.lineItems.map((l) => [l.id, l]));
+  const inProposal = new Set(context.lineItems.map((l) => l.variationId).filter((id) => id !== null));
+
+  const recommendations: Recommendation[] = [];
+  const dropped: { index: number; reason: DropReason }[] = [];
+  const seen = new Set<string>();
+
+  output.recommendations.forEach((raw, index) => {
+    const drop = (reason: DropReason) => dropped.push({ index, reason });
+
+    const product = products.get(raw.productId);
+    if (!product) return drop("unknown_product");
+
+    const explanation = raw.explanation.trim();
+    if (!explanation) return drop("missing_explanation");
+
+    let lineItem: LineItem | null = null;
+    let quantity = raw.quantity;
+
+    if (raw.type === "cross_sell") {
+      if (inProposal.has(product.variationId)) return drop("already_in_proposal");
+    } else {
+      lineItem = raw.lineItemId ? (lines.get(raw.lineItemId) ?? null) : null;
+      if (!lineItem) return drop("unknown_line_item");
+
+      if (raw.type === "extension" && lineItem.variationId !== product.variationId) {
+        return drop("line_item_mismatch");
+      }
+      if (raw.type === "upgrade") {
+        if (lineItem.variationId === product.variationId) return drop("line_item_mismatch");
+        const current = lineItem.variationId !== null ? products.get(lineItem.variationId) : undefined;
+        if (current?.category && product.category && current.category !== product.category) {
+          return drop("category_mismatch");
+        }
+        const replacementPrice = product.price?.unitPriceExclVat;
+        if (replacementPrice === undefined || lineItem.unitPriceExclVat === null || replacementPrice <= lineItem.unitPriceExclVat) {
+          return drop("not_an_upgrade");
+        }
+        // An upgrade replaces the existing units one for one.
+        if (lineItem.quantity !== null) quantity = lineItem.quantity;
+      }
+    }
+
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > MAX_QUANTITY) return drop("invalid_quantity");
+
+    const key = `${product.variationId}:${lineItem?.id ?? ""}`;
+    if (seen.has(key)) return drop("duplicate");
+    if (recommendations.length >= MAX_RECOMMENDATIONS) return drop("over_limit");
+    seen.add(key);
+
+    recommendations.push({
+      id: `${raw.type}:${key}`,
+      type: raw.type,
+      product,
+      lineItem,
+      quantity,
+      quantityLabel: quantityLabel(raw.quantityRationale, quantity),
+      explanation: explanation.slice(0, 600),
+      confidence: raw.confidence,
+    });
+  });
+
+  return { recommendations, dropped };
+}

@@ -14,7 +14,7 @@ acceptance criteria, update this file, make one focused commit (with user approv
 | 2a | Test Data Seeding (added at the Step 2 checkpoint) | DONE |
 | 3 | Proposal Retrieval & Selection | DONE |
 | 4 | Product Catalog Integration | DONE |
-| 5 | AI Recommendation Engine | TODO |
+| 5 | AI Recommendation Engine | DONE |
 | 6 | Revenue Simulation | TODO |
 | 7 | Recommendation Feedback Loop | TODO |
 | 8 | Dashboard UI | TODO |
@@ -324,36 +324,66 @@ every later step runs on real API data.
 **Dependencies:** Steps 3 and 4.
 
 **Acceptance criteria:**
-- Recommendations reference only real catalog product IDs.
-- The LLM never supplies prices. Prices come only from the rate card or proposal blocks.
-- Malformed model output is handled without crashing.
-- An empty recommendation result is handled correctly.
+- [x] Recommendations reference only real catalog product IDs (validation drops unknown
+  products and line items; verified with crafted output on live data).
+- [x] The LLM never supplies prices. The output schema has no price fields; prices come only
+  from the rate card or proposal blocks.
+- [x] Malformed model output is handled without crashing (`NoObjectGeneratedError` /
+  `NoOutputGeneratedError` map to an inline message; bad individual suggestions are dropped).
+- [x] An empty recommendation result is handled correctly ("No suitable opportunities found").
 
 **Expected commit:** `feat: add ai recommendation engine`
 
-**Status:** TODO
+**Notes:**
+- Provider: **OpenAI through the Vercel AI SDK** (`@ai-sdk/openai`), model `gpt-5-mini` by
+  default (`OPENAI_MODEL`), reasoning effort `low`, and strict structured output via
+  `generateText` + `Output.object`. Chosen over the Vercel AI Gateway and Anthropic for cost and
+  simplicity; the AI SDK keeps the provider swappable.
+- `lib/recommendations/`: the lenient model output schema; pure `validateRecommendations`, which
+  drops unknown product, unknown line item, already in proposal, line item mismatch, category
+  mismatch, not an upgrade, invalid quantity, duplicate and over the limit of three (an upgrade's
+  quantity is forced to the line item's); a prompt containing event facts, line items and catalog
+  but no PII; the server-only engine; and a deterministic **mock mode** (`RECOMMENDATIONS_MODE=mock`)
+  for UI work without API calls.
+- `quantityLabel`: the model writes the quantity as a compact multiplication ("80 guests × 2 days").
+  It is shown only if its numbers multiply to exactly the quantity.
+- Server action `findOpportunities` (`app/proposals/[uuid]/actions.ts`) validates the UUID,
+  re-fetches proposal and catalog server-side, and returns plain view data.
+- UI: "Revenue opportunities" panel with verb titles (Add / Upgrade / Extend), a type pill,
+  confidence as `LevelBars` plus a word, the calculation line, and the value on the proposal's VAT
+  basis with its VAT rate. New UI components: `Spinner` and `LevelBars`.
+- **Pulled forward from Step 6:** `lib/revenue/uplift.ts` (deterministic value per opportunity
+  in integer cents, both VAT bases, currency check), because the cards show values.
+- Live check: one `gpt-5-mini` call on the Tech Summit took 8.8 s and returned 3 suggestions,
+  3 kept and 0 dropped.
+- Code review: one issue (the public, unthrottled AI endpoint enables cost abuse), deferred to Step 9.
+
+**Status:** DONE
 
 ---
 
 ## Step 6 — Revenue Simulation
 
-**Goal:** Deterministically calculate the potential additional revenue for each
-recommendation and for the selected set.
+**Goal:** Let the salesperson select opportunities and adjust their quantities, and
+deterministically calculate the potential additional revenue for each one and for the selected set.
 
 **Tasks:**
-- Implement pure functions in `lib/revenue/`:
+- Per-opportunity values in `lib/revenue/uplift.ts` exist already (pulled forward in Step 5):
   - Cross-sell: rate-card unit price × quantity.
   - Upgrade: (rate-card replacement price − existing block unit price) × quantity.
   - Extension: additional units × the existing block's unit price.
+- **Select opportunities** to include in the simulation, and **edit the quantity** per
+  opportunity (an integer from 1 to 10,000). The amount always stays list price × quantity, so it is
+  never typed in directly; the calculation line and value update immediately.
+- Show a running total: the current proposal total, the selected opportunities, and the potential
+  new total, on the proposal's VAT basis.
 - Work in integer minor units (as confirmed in Step 2a), and use one VAT basis per proposal
-  (block values without tax unless the proposal is tax-inclusive). Show where each price
-  came from (rate card or proposal).
-- Derive quantities deterministically from proposal data (guests, nights, days) where possible.
+  (block values without tax unless the proposal is tax-inclusive).
 - Refuse to add amounts that use different currencies or VAT bases. Return an explicit
   "not comparable" or "price unavailable" result instead.
 - Add a test runner (Vitest) and unit tests covering normal cases, missing prices, currency
   mismatches and VAT mismatches, plus Proposales client error mapping.
-- Label totals in the UI as "potential additional revenue."
+- Label totals in the UI as potential revenue.
 
 **Dependencies:** Steps 4 and 5.
 
@@ -373,14 +403,15 @@ recommendation and for the selected set.
 **Goal:** Let salespeople accept or dismiss recommendations and capture structured feedback.
 
 **Tasks:**
-- Add accept and dismiss actions per recommendation.
+- Add accept and dismiss actions per recommendation. Accepting stores the selected quantity,
+  including any manual change from the AI's suggestion, which is a useful feedback signal.
 - Dismissal requires a reason (Already included in another package / Customer has a strict
   budget / Not relevant to this event / Product is unavailable / Other) plus an optional
   comment.
 - Validate feedback with Zod on the server.
 - Persist feedback using the simplest justified option. Decide between in-memory/local
   storage and PostgreSQL, and document the choice. Do not store unnecessary customer data.
-- Update the revenue simulation so it reflects only accepted recommendations.
+- Make the Step 6 simulation reflect accepted and dismissed recommendations.
 - Optional (the API supports it per Step 2): "apply to draft" via `PATCH /v3/proposals/{uuid}`.
   Only for proposals with status `draft`. Build the complete block list from a freshly fetched
   proposal (the PATCH replaces all blocks), show the change for confirmation, handle 409
@@ -431,7 +462,12 @@ recommendation and for the selected set.
 - Make sure tests cover revenue calculations, product ID validation, and the feedback
   schema validation.
 - Run lint, typecheck, tests and the production build.
-- Configure Vercel environment variables (server-only).
+- Configure Vercel environment variables (server-only), including `OPENAI_API_KEY`, and make
+  sure `RECOMMENDATIONS_MODE` is unset or `live` in production.
+- **Protect the deployment against cost abuse** (code review, Step 5): the "Find opportunities"
+  server action is a public endpoint that triggers a paid OpenAI call on every request, with no
+  authentication or rate limit. Turn on Vercel Deployment Protection (password or Vercel login)
+  for the deployment, and set a monthly spending limit on the OpenAI project.
 - Deploy and smoke-test the end-to-end flow.
 - Update `README.md` with setup instructions, architecture overview, decisions, limitations
   and the deployed URL.
@@ -441,6 +477,7 @@ recommendation and for the selected set.
 **Acceptance criteria:**
 - All checks pass.
 - The deployed app works end to end, with no secrets in the client bundle or the repository.
+- The deployment is not publicly usable without protection, and OpenAI spend is capped.
 - The README accurately describes what works and what does not.
 
 **Expected commit:** `test: add critical logic tests and deployment docs` (split into
@@ -462,3 +499,8 @@ recommendation and for the selected set.
   Committed as three commits (brand styling, UI library, feature) instead of one, at the
   user's request, to keep the review manageable. Each commit builds on its own.
 - Step 4: Catalog joined with the rate card, shown on the proposal page.
+- Step 5: AI recommendations via OpenAI (`gpt-5-mini`, Vercel AI SDK) with deterministic
+  validation, a mock mode, and value cards; per-opportunity revenue was pulled forward from Step 6.
+  Steps 6–7 revised: Step 6 adds selecting opportunities and editing quantities, with a running
+  total; Step 7 stores accepted quantities as feedback. Step 9 adds deployment protection and an
+  OpenAI spending limit (code review).

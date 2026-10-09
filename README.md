@@ -3,9 +3,9 @@
 An AI-powered revenue optimization assistant for hotel sales teams using
 [Proposales](https://proposales.com).
 
-> **Status:** Early development. You can browse and open real Proposales proposals (line items
-> and totals) next to the hotel's priced product catalog. Recommendations, revenue simulation
-> and feedback are not built yet.
+> **Status:** In development. You can open real Proposales proposals, see the hotel's priced
+> catalog, and ask the AI for up to three revenue opportunities, each with a deterministic value.
+> Quantity editing, totals and accept/dismiss feedback are not built yet.
 
 ## What it is
 
@@ -43,7 +43,8 @@ them, and leaves the salesperson in control.
 | 2a — Test Data Seeding | DONE |
 | 3 — Proposal Retrieval & Selection | DONE |
 | 4 — Product Catalog Integration | DONE |
-| 5–9 — AI recommendations, revenue, feedback, deployment | TODO |
+| 5 — AI Recommendation Engine | DONE |
+| 6–9 — Revenue simulation, feedback, dashboard, deployment | TODO |
 
 See the implementation plan for details.
 
@@ -53,11 +54,13 @@ Requires Node.js 20.9 or later.
 
 ```bash
 npm install
-cp .env.example .env.local   # then fill in PROPOSALES_API_KEY
+cp .env.example .env.local   # then fill in PROPOSALES_API_KEY and OPENAI_API_KEY
 npm run dev                  # http://localhost:3000
 ```
 
 Checks: `npm run typecheck`, `npm run lint`, `npm run build`.
+
+Set `RECOMMENDATIONS_MODE=mock` in `.env.local` to use fake suggestions without calling OpenAI.
 
 ### Test data
 
