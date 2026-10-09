@@ -55,6 +55,8 @@ export type ProposalSummary = {
 
 export type ProposalDetail = {
   uuid: string;
+  companyId: number;
+  language: string;
   title: string;
   description: string | null;
   status: ProposalStatus;
@@ -129,6 +131,8 @@ export function toProposalSummary(result: ProposalSearchResult): ProposalSummary
 export function toProposalDetail(proposal: Proposal): ProposalDetail {
   return {
     uuid: proposal.uuid,
+    companyId: proposal.company_id,
+    language: proposal.language,
     title: proposal.title?.trim() || UNTITLED,
     description: proposal.description_md?.trim() || null,
     status: proposal.status,

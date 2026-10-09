@@ -52,6 +52,9 @@ step-by-step plan.
   server-only modules (e.g. `lib/env.ts`).
 - `lib/proposales/`: API client and response schemas. `lib/proposals/`: the internal proposal
   model (pure normalization) and the server-only service that the pages call.
+- `lib/catalog/`: rate card schema, pure catalog join (content library + rate card, matched on
+  `variation_id`) and the server-only `getCatalog`. A product without a rate-card entry has
+  `price: null`, never 0.
 - Pages read `params`/`searchParams` and fetch data inside `<Suspense>`. Handle expected API
   errors inline (production hides error messages in `error.tsx`).
 - Read server secrets through `getServerEnv()` in `lib/env.ts` (Zod-validated, `server-only`).
@@ -73,7 +76,7 @@ step-by-step plan.
   page `#f9f9f9` (`surface-1`), white rounded surfaces (`surface-2`), black pill buttons, headings
   `#292929`, `subtle` `#919191` for **large** text only (small secondary text uses `muted` `#6b6b6b`
   for contrast), and `surface-inverse` `#111f1e` for dark sections. The visual language follows
-  Proposales: a floating white header bar, **no borders** (separate with
+  Proposales: a floating glass header bar (`surface-glass` + backdrop blur), **no borders** (separate with
   surface contrast and spacing; the only exception is the `divider` line above totals in `Totals`),
   no extra background fills for sub-sections, pill-shaped controls, monochrome, colour only for meaning
   (`success`, `failure`), Switzer font.
