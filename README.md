@@ -46,4 +46,6 @@ See the implementation plan for details.
 - [Product requirements](docs/PRODUCT.md)
 - [Implementation plan](docs/IMPLEMENTATION_PLAN.md)
 - [API findings](docs/API_FINDINGS.md) (template; not yet investigated)
+- [Proposales OpenAPI spec](https://docs.proposales.com/openapi.json): the machine-readable
+  API contract (OpenAPI 3.0); local snapshot in [docs/proposales-openapi.json](docs/proposales-openapi.json)
 - [Engineering guidelines for Claude Code](CLAUDE.md)

@@ -86,7 +86,8 @@ before writing any code.
 **Goal:** Find out what the Proposales API actually supports and adjust the plan to match.
 
 **Tasks:**
-- Study the official OpenAPI specification: https://docs.proposales.com/openapi.json
+- Study the official OpenAPI 3.0 specification: https://docs.proposales.com/openapi.json
+  (local snapshot: `docs/proposales-openapi.json`; check it against upstream first).
 - Verify authentication (Bearer token, `PROPOSALES_API_KEY`) with read-only requests.
 - Investigate company info, proposal search/listing, proposal details, proposal blocks,
   product catalog, product pricing (currency, VAT), optional products, draft updates and
@@ -309,3 +310,4 @@ recommendation and for the selected set.
 ## Change Log
 
 - Step 0: Initial plan created.
+- Step 0 (addendum): Added a local snapshot of the Proposales OpenAPI spec as reference material.

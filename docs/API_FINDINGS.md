@@ -2,7 +2,13 @@
 
 Investigation template, to be completed in **Step 2**.
 
-- OpenAPI specification: https://docs.proposales.com/openapi.json
+- OpenAPI specification: https://docs.proposales.com/openapi.json. This is the complete,
+  machine-readable API contract (OpenAPI 3.0). It can be imported into API clients, code
+  generators and agent tooling.
+- Local snapshot: [`docs/proposales-openapi.json`](proposales-openapi.json) (OpenAPI 3.0.3,
+  spec version `2026.09.02`, downloaded 2026-10-09). Use the local copy for offline reference
+  and agent tooling; re-download it if the upstream spec changes. The live API is the final
+  authority.
 - Base URL: https://api.proposales.com
 - Authentication: Bearer token from the `PROPOSALES_API_KEY` environment variable (server-side only)
 

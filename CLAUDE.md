@@ -11,6 +11,15 @@ creation, digital proposal and e-signing workflows and does not duplicate them.
 See `docs/PRODUCT.md` for product requirements and `docs/IMPLEMENTATION_PLAN.md` for the
 step-by-step plan.
 
+## Proposales API Reference
+
+- The OpenAPI 3.0 contract is at https://docs.proposales.com/openapi.json, with a local
+  snapshot in `docs/proposales-openapi.json`.
+- Base URL: https://api.proposales.com. Authentication: Bearer token from `PROPOSALES_API_KEY`.
+- Use the spec as the source for endpoints and schemas. Do not assume behavior that isn't in
+  the spec or confirmed in `docs/API_FINDINGS.md`.
+- Use the spec to derive Zod schemas; it may also be used for type generation if that is justified.
+
 ## Architecture
 
 - Use a simple Next.js (App Router) full-stack architecture.
