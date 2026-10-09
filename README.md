@@ -4,7 +4,8 @@ An AI-powered revenue optimization assistant for hotel sales teams using
 [Proposales](https://proposales.com).
 
 > **Status:** Early development. You can browse and open real Proposales proposals (line items
-> and totals). Recommendations, revenue simulation and feedback are not built yet.
+> and totals) next to the hotel's priced product catalog. Recommendations, revenue simulation
+> and feedback are not built yet.
 
 ## What it is
 
@@ -41,7 +42,8 @@ them, and leaves the salesperson in control.
 | 2 — Proposales API Investigation | DONE |
 | 2a — Test Data Seeding | DONE |
 | 3 — Proposal Retrieval & Selection | DONE |
-| 4–9 — Catalog, AI recommendations, revenue, feedback, deployment | TODO |
+| 4 — Product Catalog Integration | DONE |
+| 5–9 — AI recommendations, revenue, feedback, deployment | TODO |
 
 See the implementation plan for details.
 

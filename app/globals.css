@@ -8,6 +8,7 @@
   --surface-2: #ffffff; /* header bar, cards, inputs */
   --surface-3: #f2f2f2; /* hover on white surfaces */
   --surface-inverse: #111f1e; /* Proposales deep green-black, for dark feature sections */
+  --surface-glass: #ffffffb3;
   --badge: #0000000f;
   --divider: #0000001f; /* only for separating totals, see CLAUDE.md */
   --text-heading: #292929;
@@ -27,6 +28,7 @@
     --surface-2: #1a1a1a;
     --surface-3: #292929;
     --surface-inverse: #111f1e;
+    --surface-glass: #00000099;
     --badge: #ffffff1a;
     --divider: #ffffff26;
     --text-heading: #ffffff;
@@ -44,6 +46,7 @@
   --color-surface-2: var(--surface-2);
   --color-surface-3: var(--surface-3);
   --color-surface-inverse: var(--surface-inverse);
+  --color-surface-glass: var(--surface-glass);
   --color-badge: var(--badge);
   --color-divider: var(--divider);
   --color-heading: var(--text-heading);

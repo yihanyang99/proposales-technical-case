@@ -20,7 +20,7 @@ export function TableHead({ className, ...props }: ComponentProps<"thead">) {
 }
 
 export function TableHeaderCell({ className, align, ...props }: ComponentProps<"th"> & { align?: "left" | "right" }) {
-  return <th scope="col" className={cn("px-5 py-3 font-medium", align === "right" && "text-right", className)} {...props} />;
+  return <th scope="col" className={cn("px-5 py-3 font-medium", align === "right" ? "text-right" : "text-left", className)} {...props} />;
 }
 
 export function TableCell({ className, align, numeric, ...props }: ComponentProps<"td"> & { align?: "left" | "right"; numeric?: boolean }) {

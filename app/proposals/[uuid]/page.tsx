@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { CatalogSection } from "@/components/catalog-section";
 import { EventSummary } from "@/components/event-summary";
 import { StatusBadge } from "@/components/status-badge";
 import {
@@ -66,6 +67,13 @@ async function ProposalView({ params }: { params: PageProps<"/proposals/[uuid]">
         }
       />
       <LineItemsTable proposal={proposal} />
+      <Suspense fallback={<Skeleton className="h-72" />}>
+        <CatalogSection
+          companyId={proposal.companyId}
+          language={proposal.language}
+          inProposal={new Set(proposal.lineItems.map((item) => item.variationId).filter((id) => id !== null))}
+        />
+      </Suspense>
     </article>
   );
 }

@@ -13,7 +13,7 @@ acceptance criteria, update this file, make one focused commit (with user approv
 | 2 | Proposales API Investigation (architecture checkpoint) | DONE |
 | 2a | Test Data Seeding (added at the Step 2 checkpoint) | DONE |
 | 3 | Proposal Retrieval & Selection | DONE |
-| 4 | Product Catalog Integration | TODO |
+| 4 | Product Catalog Integration | DONE |
 | 5 | AI Recommendation Engine | TODO |
 | 6 | Revenue Simulation | TODO |
 | 7 | Recommendation Feedback Loop | TODO |
@@ -274,13 +274,33 @@ every later step runs on real API data.
 **Dependencies:** Steps 2 and 2a. Can run in parallel with Step 3 in principle, but is executed after it.
 
 **Acceptance criteria:**
-- Real catalog products are fetched and validated, and every rate-card entry refers to a real product.
-- Products with missing or ambiguous pricing are flagged.
-- Currency and VAT basis are captured for each priced product.
+- [x] Real catalog products are fetched and validated, and every rate-card entry refers to a real
+  product (12 live products, 12 priced, 0 orphaned entries; orphans are flagged in the UI).
+- [x] Products with missing or ambiguous pricing are flagged ("Price unavailable", grouped under
+  "Not in rate card", with a notice above the catalog).
+- [x] Currency and VAT basis are captured for each priced product (the rate card schema requires
+  `currency`, `vatBasis: "excluded"`, minor units, and a VAT rate per product).
 
 **Expected commit:** `feat: integrate proposales product catalog`
 
-**Status:** TODO
+**Notes:**
+- `lib/catalog/rate-card.ts`: Zod schema, parsed once at module load (an invalid rate card fails
+  fast). It rejects duplicate `variation_id`s.
+- `lib/catalog/model.ts`: pure `joinCatalog` (matched on `variation_id`, which proposal blocks
+  reference as `content_id`), `pickLocalized`, and `groupByCategory`.
+  `lib/catalog/service.ts`: server-only `getCatalog`.
+- The catalog is scoped to the **proposal's own company** (`company_id`), so a token with access
+  to several hotels never mixes catalogs. Archived products are excluded by the API by default.
+- The proposal detail page shows a "Hotel catalog" section in its own `<Suspense>` boundary:
+  one card per category (with a Proposales-style line icon), list price per Proposales unit,
+  VAT rate, and an "In proposal" pill. `unitLabel` is not displayed; it is kept as AI context
+  for Step 5.
+- UI updates in this step: a glass header (`surface-glass` token plus backdrop blur), and
+  `TableHeaderCell` is now left-aligned by default.
+- Availability is not modelled, because the API does not expose it.
+- Verified with a read-only script against live data. Unit tests for the join come with Vitest in Step 6.
+
+**Status:** DONE
 
 ---
 
@@ -435,9 +455,10 @@ recommendation and for the selected set.
 - Step 0: Initial plan created.
 - Step 0 (addendum): Added a local snapshot of the Proposales OpenAPI spec as reference material.
 - Step 1: Next.js project initialized (see Step 1 notes).
+- Step 2: Checkpoint. Added Step 2a (test data seeding). Steps 3–7 revised: rate card for
+  pricing, client-side search filtering, stricter draft-update safeguards, Vitest moved to Step 6.
+- Step 2a: Seeded 12 products and 4 draft proposals; open API questions answered live.
 - Step 3: Proposal list and detail pages on live data.
   Committed as three commits (brand styling, UI library, feature) instead of one, at the
   user's request, to keep the review manageable. Each commit builds on its own.
-- Step 2a: Seeded 12 products and 4 draft proposals; open API questions answered live.
-- Step 2: Checkpoint. Added Step 2a (test data seeding). Steps 3–7 revised: rate card for
-  pricing, client-side search filtering, stricter draft-update safeguards, Vitest moved to Step 6.
+- Step 4: Catalog joined with the rate card, shown on the proposal page.
