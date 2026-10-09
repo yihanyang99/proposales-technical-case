@@ -50,6 +50,10 @@ step-by-step plan.
 
 - `app/`: routes and UI. `components/`: shared UI components. `lib/`: business logic and
   server-only modules (e.g. `lib/env.ts`).
+- `lib/proposales/`: API client and response schemas. `lib/proposals/`: the internal proposal
+  model (pure normalization) and the server-only service that the pages call.
+- Pages read `params`/`searchParams` and fetch data inside `<Suspense>`. Handle expected API
+  errors inline (production hides error messages in `error.tsx`).
 - Read server secrets through `getServerEnv()` in `lib/env.ts` (Zod-validated, `server-only`).
 - Checks: `npm run typecheck`, `npm run lint`, `npm run build`. Dev server: `npm run dev`.
 - Test data: `npm run seed` (dry run). `--apply` writes to Proposales and needs explicit approval for each run.
