@@ -20,3 +20,21 @@ export function getServerEnv(): ServerEnv {
   }
   return result.data;
 }
+
+const aiEnvSchema = z.object({
+  OPENAI_API_KEY: z.string().min(1, "OPENAI_API_KEY is not set"),
+  OPENAI_MODEL: z.string().min(1).default("gpt-5-mini"),
+});
+
+export type AiEnv = { model: string };
+
+/** Live model calls by default; "mock" returns deterministic fake suggestions without calling OpenAI. */
+export function getRecommendationsMode(): "live" | "mock" {
+  return z.enum(["live", "mock"]).catch("live").parse(process.env.RECOMMENDATIONS_MODE);
+}
+
+/** OpenAI configuration, validated when a recommendation is requested. */
+export function getAiEnv(): AiEnv {
+  const env = aiEnvSchema.parse(process.env);
+  return { model: env.OPENAI_MODEL };
+}

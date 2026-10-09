@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { CatalogSection } from "@/components/catalog-section";
 import { EventSummary } from "@/components/event-summary";
+import { RecommendationsPanel } from "@/components/recommendations-panel";
 import { StatusBadge } from "@/components/status-badge";
 import {
   Alert,
@@ -67,6 +68,7 @@ async function ProposalView({ params }: { params: PageProps<"/proposals/[uuid]">
         }
       />
       <LineItemsTable proposal={proposal} />
+      <RecommendationsPanel proposalUuid={proposal.uuid} />
       <Suspense fallback={<Skeleton className="h-72" />}>
         <CatalogSection
           companyId={proposal.companyId}
