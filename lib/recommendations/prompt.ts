@@ -13,7 +13,7 @@ Opportunity types:
 Rules:
 - Only use product ids and line item ids that appear in the data. Never invent products, prices, availability or customer preferences.
 - Do not output prices or revenue; they are calculated separately.
-- Base quantities on the event facts (guests, days, nights, existing quantities). In quantityRationale, write the quantity as a compact multiplication of those facts that equals the quantity, e.g. "80 guests × 2 days" or "40 rooms".
+- Base quantities on the event facts (guests, days, nights, existing quantities). In quantityRationale, write the quantity as a compact multiplication of those facts that equals the quantity: "N rooms × M nights" for rooms priced per night, "N guests × M days" for per-person items, "N days" for day-priced items, e.g. "20 rooms × 1 night" or "80 guests × 2 days".
 - Prefer fewer, high-quality suggestions. Return an empty list if nothing clearly fits.
 - Confidence is your qualitative judgement of fit (low, medium, high), not a probability that the customer buys.
 - Write explanations for the salesperson in English, 1-2 sentences, referring to the event facts.`;

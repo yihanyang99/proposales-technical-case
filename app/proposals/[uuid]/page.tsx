@@ -68,7 +68,12 @@ async function ProposalView({ params }: { params: PageProps<"/proposals/[uuid]">
         }
       />
       <LineItemsTable proposal={proposal} />
-      <RecommendationsPanel proposalUuid={proposal.uuid} />
+      <RecommendationsPanel
+        proposalUuid={proposal.uuid}
+        currentTotal={proposal.vatIncluded ? proposal.totalInclVat : proposal.totalExclVat}
+        currency={proposal.currency}
+        vatIncluded={proposal.vatIncluded}
+      />
       <Suspense fallback={<Skeleton className="h-72" />}>
         <CatalogSection
           companyId={proposal.companyId}

@@ -1,11 +1,11 @@
 import { z } from "zod";
 import type { CatalogProduct } from "@/lib/catalog/model";
 import type { LineItem } from "@/lib/proposals/model";
+import { MAX_QUANTITY } from "@/lib/revenue/simulation";
 
 export const RECOMMENDATION_TYPES = ["cross_sell", "upgrade", "extension"] as const;
 export const CONFIDENCE_LEVELS = ["low", "medium", "high"] as const;
 export const MAX_RECOMMENDATIONS = 3;
-const MAX_QUANTITY = 10_000;
 
 export type RecommendationType = (typeof RECOMMENDATION_TYPES)[number];
 export type Confidence = (typeof CONFIDENCE_LEVELS)[number];
@@ -80,6 +80,32 @@ export function quantityLabel(expression: string, quantity: number): string | nu
     product *= Number(match[1]);
   }
   return product === quantity ? terms.join(" × ") : null;
+}
+
+const plural = (count: number, word: string) => (count === 1 ? word : `${word}s`);
+
+/**
+ * How much an extension adds, in words. Uses the AI's verified breakdown when it is still valid
+ * ("20 rooms × 1 night" → "by 1 night for 20 rooms"); otherwise falls back to plain units.
+ */
+export function describeExtension(quantity: number, unit: string | null, verifiedLabel: string | null): string {
+  if (verifiedLabel) {
+    const terms = verifiedLabel.split(" × ").map((term) => {
+      const [count, ...words] = term.split(" ");
+      return { count: Number(count), noun: words.join(" ").toLowerCase() };
+    });
+    const rooms = terms.find((t) => /^rooms?$/.test(t.noun));
+    const nights = terms.find((t) => /^nights?$/.test(t.noun));
+    if (unit === "night" && terms.length === 2 && rooms && nights) {
+      return `by ${nights.count} ${plural(nights.count, "night")} for ${rooms.count} ${plural(rooms.count, "room")}`;
+    }
+    if (terms.length === 1 && unit && new RegExp(`^${unit}s?$`).test(terms[0].noun)) {
+      return `by ${terms[0].count} ${plural(terms[0].count, unit)}`;
+    }
+  }
+  if (unit === "night") return `(${quantity} room-${plural(quantity, "night")})`;
+  if (unit === "day") return `by ${quantity} ${plural(quantity, "day")}`;
+  return `(${quantity}${unit ? ` × ${unit}` : ""})`;
 }
 
 /**

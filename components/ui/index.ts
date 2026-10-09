@@ -7,6 +7,7 @@ export { Chip, ChipGroup } from "./chips";
 export { Alert, EmptyState, Skeleton } from "./feedback";
 export { FieldLabel, Input, SearchInput } from "./field";
 export { Page, PageHeader, SectionTitle } from "./layout";
+export { QuantityInput } from "./quantity-input";
 export { LevelBars } from "./level-bars";
 export { LocalDate } from "./local-date";
 export { Spinner } from "./spinner";

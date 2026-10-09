@@ -4,6 +4,7 @@ import { z } from "zod";
 import { describeError, isNotFound } from "@/lib/proposales/errors";
 import { generateRecommendations, RecommendationError } from "@/lib/recommendations/engine";
 import type { Confidence, RecommendationType } from "@/lib/recommendations/model";
+import { MAX_QUANTITY } from "@/lib/revenue/simulation";
 
 export type RecommendationView = {
   id: string;
@@ -13,6 +14,8 @@ export type RecommendationView = {
   /** Line item being upgraded or extended. */
   lineItemTitle: string | null;
   quantity: number;
+  /** Highest quantity the salesperson may set (an upgrade can't exceed the booked units). */
+  maxQuantity: number;
   unit: string | null;
   quantityLabel: string | null;
   explanation: string;
@@ -34,7 +37,7 @@ export type RecommendationView = {
 
 export type RecommendationsState =
   | { status: "idle" }
-  | { status: "done"; recommendations: RecommendationView[]; droppedCount: number }
+  | { status: "done"; runId: string; recommendations: RecommendationView[]; droppedCount: number }
   | { status: "error"; message: string };
 
 const inputSchema = z.object({ proposalUuid: z.guid() });
@@ -48,6 +51,7 @@ export async function findOpportunities(_previous: RecommendationsState, formDat
     const incl = proposal.vatIncluded;
     return {
       status: "done",
+      runId: crypto.randomUUID(),
       droppedCount,
       recommendations: recommendations.map((r) => ({
         id: r.id,
@@ -56,6 +60,7 @@ export async function findOpportunities(_previous: RecommendationsState, formDat
         productDescription: r.product.description,
         lineItemTitle: r.lineItem?.title ?? null,
         quantity: r.quantity,
+        maxQuantity: r.type === "upgrade" ? (r.lineItem?.quantity ?? r.quantity) : MAX_QUANTITY,
         unit: r.product.price?.unit ?? null,
         quantityLabel: r.quantityLabel,
         explanation: r.explanation,

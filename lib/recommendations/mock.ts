@@ -61,7 +61,7 @@ export function mockModelOutput(proposal: ProposalDetail, catalog: CatalogProduc
       quantityRationale: (() => {
         const extra = Math.max(1, Math.round((extendable.quantity ?? 1) / 2));
         const unit = byVariation.get(extendable.variationId)?.price?.unit;
-        return unit === "night" ? `${extra} rooms` : `${extra} ${extra === 1 ? "day" : "days"}`;
+        return unit === "night" ? `${extra} rooms × 1 night` : `${extra} ${extra === 1 ? "day" : "days"}`;
       })(),
       explanation: `Mock suggestion: extend ${extendable.title} so guests can arrive the evening before.`,
       confidence: "low",
