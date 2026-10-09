@@ -54,6 +54,30 @@ step-by-step plan.
 - Checks: `npm run typecheck`, `npm run lint`, `npm run build`. Dev server: `npm run dev`.
 - Test data: `npm run seed` (dry run). `--apply` writes to Proposales and needs explicit approval for each run.
 
+## UI Library
+
+- Reusable UI lives in `components/ui/` (import from `@/components/ui`): `Button`/`buttonStyles`,
+  `Input`, `FieldLabel`, `Card`/`cardStyles`, `Chip`/`ChipGroup`, `Badge`, `Dot`, `Alert`,
+  `EmptyState`, `Skeleton`, `Page`, `PageHeader`, `SectionTitle`, `Table*` primitives, `Totals` and
+  `LocalDate` (timestamps in the viewer's time zone; never format timestamps in UTC on the server).
+- Prefer chips (pill links or choices) over a native `<select>`: the open menu of a native select
+  cannot be styled and looks browser-default.
+- Pages and feature components compose these. Do not hand-style buttons, fields, cards, badges or
+  tables in pages. If something is missing, add or extend a component in `components/ui/`.
+- Styling comes from the design tokens in `app/globals.css` (Tailwind names such as `bg-surface-2`,
+  `text-muted`, `bg-primary`). Never hard-code colours. The palette is sampled from proposales.com:
+  page `#f9f9f9` (`surface-1`), white rounded surfaces (`surface-2`), black pill buttons, headings
+  `#292929`, `subtle` `#919191` for **large** text only (small secondary text uses `muted` `#6b6b6b`
+  for contrast), and `surface-inverse` `#111f1e` for dark sections. The visual language follows
+  Proposales: a floating white header bar, **no borders** (separate with
+  surface contrast and spacing; the only exception is the `divider` line above totals in `Totals`),
+  no extra background fills for sub-sections, pill-shaped controls, monochrome, colour only for meaning
+  (`success`, `failure`), Switzer font.
+- Components accept `className` for layout tweaks (width, margin) and are combined with `cn()` from
+  `lib/cn.ts`. `cn()` does not merge conflicting Tailwind classes, so keep overrides additive.
+- Keep the library small: add a component when a step needs it, not in advance.
+- Domain components built on the library (e.g. `StatusBadge`, `EventSummary`) live in `components/`.
+
 ## Security
 
 - Never expose API keys to the browser. `PROPOSALES_API_KEY` and LLM keys are server-only;
