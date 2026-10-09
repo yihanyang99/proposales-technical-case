@@ -1,26 +1,72 @@
 @import "tailwindcss";
 
+/* Design tokens sampled from proposales.com (2026-10-09): light grey page, white rounded
+   surfaces, no borders (separation comes from surface contrast), monochrome neutrals,
+   Switzer, black pill buttons. Components use the Tailwind names from @theme below. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --surface-1: #f9f9f9; /* page */
+  --surface-2: #ffffff; /* header bar, cards, inputs */
+  --surface-3: #f2f2f2; /* hover on white surfaces */
+  --surface-inverse: #111f1e; /* Proposales deep green-black, for dark feature sections */
+  --badge: #0000000f;
+  --divider: #0000001f; /* only for separating totals, see CLAUDE.md */
+  --text-heading: #292929;
+  --text-body: #353535;
+  --text-muted: #6b6b6b; /* small secondary text (meets WCAG AA on white and page grey) */
+  --text-subtle: #919191; /* Proposales muted heading grey: large text only */
+  --primary: #000000;
+  --primary-hover: #353535;
+  --on-primary: #ffffff;
+  --success: #4cc02b;
+  --failure: #ce1919;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --surface-1: #000000;
+    --surface-2: #1a1a1a;
+    --surface-3: #292929;
+    --surface-inverse: #111f1e;
+    --badge: #ffffff1a;
+    --divider: #ffffff26;
+    --text-heading: #ffffff;
+    --text-body: #eeeeee;
+    --text-muted: #a3a3a3;
+    --text-subtle: #8a8a8a;
+    --primary: #ffffff;
+    --primary-hover: #cccccc;
+    --on-primary: #000000;
   }
 }
 
+@theme inline {
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-surface-inverse: var(--surface-inverse);
+  --color-badge: var(--badge);
+  --color-divider: var(--divider);
+  --color-heading: var(--text-heading);
+  --color-body: var(--text-body);
+  --color-muted: var(--text-muted);
+  --color-subtle: var(--text-subtle);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-on-primary: var(--on-primary);
+  --color-success: var(--success);
+  --color-failure: var(--failure);
+  --font-sans: var(--font-switzer), Arial, sans-serif;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--surface-1);
+  color: var(--text-body);
+  font-family: var(--font-sans);
+}
+
+h1,
+h2,
+h3 {
+  color: var(--text-heading);
+  letter-spacing: -0.01em;
 }
