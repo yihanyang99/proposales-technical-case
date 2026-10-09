@@ -31,6 +31,22 @@ step-by-step plan.
 - Avoid unnecessary abstraction layers.
 - Prefer readable, maintainable TypeScript.
 
+### Next.js version
+
+- This project uses Next.js 16.4, which may differ from training data. Before using an
+  unfamiliar API or convention, read the version-matched docs in `node_modules/next/dist/docs/`.
+- `cacheComponents` is enabled: uncached dynamic data must be read inside `<Suspense>`, or
+  cached explicitly with `"use cache"`. Check the docs before fetching data in pages.
+- `agentRules: false` in `next.config.ts` stops `next dev` from generating `AGENTS.md`.
+  This file is the single source of agent instructions.
+
+### Layout and commands
+
+- `app/`: routes and UI. `components/`: shared UI components. `lib/`: business logic and
+  server-only modules (e.g. `lib/env.ts`).
+- Read server secrets through `getServerEnv()` in `lib/env.ts` (Zod-validated, `server-only`).
+- Checks: `npm run typecheck`, `npm run lint`, `npm run build`. Dev server: `npm run dev`.
+
 ## Security
 
 - Never expose API keys to the browser. `PROPOSALES_API_KEY` and LLM keys are server-only;

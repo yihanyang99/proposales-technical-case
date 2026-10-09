@@ -9,7 +9,7 @@ acceptance criteria, update this file, make one focused commit (with user approv
 | Step | Title | Status |
 |------|-------|--------|
 | 0 | Project Documentation | DONE |
-| 1 | Next.js Initialization | TODO |
+| 1 | Next.js Initialization | DONE |
 | 2 | Proposales API Investigation (architecture checkpoint) | TODO |
 | 3 | Proposal Retrieval & Selection | TODO |
 | 4 | Product Catalog Integration | TODO |
@@ -71,13 +71,23 @@ before writing any code.
 **Dependencies:** Step 0.
 
 **Acceptance criteria:**
-- `npm run build`, `npm run lint` and `npm run typecheck` succeed.
-- The dev server renders the placeholder page.
-- No secrets are committed, and `.env.local` is ignored.
+- [x] `npm run build`, `npm run lint` and `npm run typecheck` succeed.
+- [x] The dev server renders the placeholder page.
+- [x] No secrets are committed, and `.env.local` is ignored.
 
 **Expected commit:** `chore: initialize next.js project`
 
-**Status:** TODO
+**Notes:**
+- Scaffolded with `create-next-app@16.4.0` (Next.js 16.4, React 19.3, Tailwind CSS v4,
+  ESLint 9) and kept the template defaults (`cacheComponents`, `partialPrefetching`).
+- Set `agentRules: false` so `next dev` does not generate `AGENTS.md`. `CLAUDE.md` is the
+  single source of agent instructions.
+- Added `lib/env.ts`: lazy, Zod-validated, `server-only` access to `PROPOSALES_API_KEY`.
+  This uses `zod` and adds the `server-only` package.
+- `typecheck` runs `next typegen` first, so route type helpers (`LayoutProps`) exist.
+- `components/` will be created with the first shared component; Git does not track empty folders.
+
+**Status:** DONE
 
 ---
 
@@ -311,3 +321,4 @@ recommendation and for the selected set.
 
 - Step 0: Initial plan created.
 - Step 0 (addendum): Added a local snapshot of the Proposales OpenAPI spec as reference material.
+- Step 1: Next.js project initialized (see Step 1 notes).

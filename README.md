@@ -3,8 +3,8 @@
 An AI-powered revenue optimization assistant for hotel sales teams using
 [Proposales](https://proposales.com).
 
-> **Status:** Planning only. Implementation has not started yet, and none of the
-> functionality described below exists.
+> **Status:** Early development. The Next.js project is set up, but none of the
+> product functionality described below exists yet.
 
 ## What it is
 
@@ -37,9 +37,22 @@ them, and leaves the salesperson in control.
 | Step | Status |
 |------|--------|
 | 0 — Project Documentation | DONE |
-| 1–9 — Implementation | TODO |
+| 1 — Next.js Initialization | DONE |
+| 2–9 — API investigation and features | TODO |
 
 See the implementation plan for details.
+
+## Local development
+
+Requires Node.js 20.9 or later.
+
+```bash
+npm install
+cp .env.example .env.local   # then fill in PROPOSALES_API_KEY
+npm run dev                  # http://localhost:3000
+```
+
+Checks: `npm run typecheck`, `npm run lint`, `npm run build`.
 
 ## Documentation
 
