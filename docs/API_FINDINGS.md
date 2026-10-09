@@ -10,9 +10,9 @@ Results of the Step 2 investigation (2026-10-09).
   Re-download it if the upstream spec changes. The live API is the final authority.
 - Base URL: https://api.proposales.com (the only server listed in the spec).
 - Authentication: Bearer token from the `PROPOSALES_API_KEY` environment variable (server-side only).
-- Money: the spec states that *"all monetary values are represented in the smallest currency
-  unit unless an operation states otherwise"* (e.g. cents). Not yet verified live, because
-  the account has no priced data.
+- Money: *"all monetary values are represented in the smallest currency unit"* (spec).
+  **Verified (live):** block unit values and proposal totals are in cents. A board meeting
+  total of `55800` shows as €558.00 in the Proposales UI.
 
 **Verification status values:**
 - `Not yet verified.`
@@ -20,10 +20,10 @@ Results of the Step 2 investigation (2026-10-09).
 - `Verified (live)`: confirmed with a real (read-only) API request
 - `Unsupported`: confirmed as not available
 
-> **Key finding:** the test account is **empty**. It has one company (`id 5500`, EUR,
-> `tax_mode: standard`, created 2026-10-09) and no active products, proposals, templates or
-> attachments. Two untitled products (190551, 190552) were created by accident in the
-> Proposales UI during the investigation and then archived by the user. Live verification of response *fields* is therefore limited to companies
+> **Test account:** one company (`id 5500`, EUR, `tax_mode: standard`). It was empty at the
+> start of Step 2. Step 2a seeded 12 products and 4 draft proposals through the API
+> (`npm run seed`, see `scripts/seed-data.ts`). Two untitled products (190551, 190552) were
+> created by accident in the Proposales UI and archived by the user; the seed script ignores them. Live verification of response *fields* is therefore limited to companies
 > and error responses. Proposal and product shapes are verified against the spec only,
 > until test data exists.
 
@@ -71,7 +71,10 @@ Results of the Step 2 investigation (2026-10-09).
   - Always pass `limit=25`, because the default is 1.
   - `limit=26` is accepted (200) rather than rejected. Whether the server caps it is not verified.
   - Search results do not include blocks or values, so a separate `GET /v3/proposals/{uuid}` is needed per proposal.
-- **Verification status:** Verified (live) for status codes (the empty list returns 200; an inaccessible company returns 401). Result fields are Verified (spec) only, because there are no proposals yet.
+- **Live (Step 2a):** result fields match the spec. `version` is `null` for drafts.
+  `filter[<key>]` works on seeded metadata, including numeric values (`filter[guests]=80`
+  matches the number 80). No blocks or values in results, as expected.
+- **Verification status:** Verified (live).
 
 ## Proposal Details
 
@@ -88,8 +91,15 @@ Results of the Step 2 investigation (2026-10-09).
     lists no 404 for this operation). The client must validate the UUID format first and treat 500 as "not found or unavailable".
   - Event context (dates, guest count, event type) has **no dedicated fields**. It can only come
     from the title/description text, block rows (`dateFrom`/`dateTo`, `quantity`,
-    `occupancy`), or integration-defined `data` keys.
-- **Verification status:** Verified (live) for the error behavior only. Response fields are Verified (spec) only.
+    `occupancy`), or integration-defined `data` keys. The seeded proposals carry
+    `data: { event_type, guests, event_start, event_end, seed_key }`.
+  - **Live:** the response has **more fields than the spec**, including more PII (`recipient_first_name`,
+    `recipient_last_name`, `recipient_sources`, `user_email`, `contact_avatar_*`) and
+    `has_been_sent`, `payment`, `payments_enabled`, `company_powerups*`. The Zod schema strips
+    everything it does not name.
+  - **Live:** new proposals default to `tax_options: { mode: "standard", tax_included: false }`.
+    `value_without_tax` / `value_with_tax` equal the sum of block unit value × quantity.
+- **Verification status:** Verified (live).
 
 ## Proposal Blocks
 
@@ -106,9 +116,15 @@ Results of the Step 2 investigation (2026-10-09).
   `MultiProductRow`, `MultiProductSubrow`.
 - **Limitations:**
   - Blocks carry both tax-inclusive and tax-exclusive values, which makes it possible to stick to one VAT basis.
-  - `content_id` is optional. Whether it holds the product ID or the variation ID is not documented.
-  - Multi-product (package) blocks make line items nested and harder to normalize.
-- **Verification status:** Verified (spec).
+  - **Live:** `content_id` is the content library **`variation_id`**. Blocks created with it get
+    their `title` and `description` filled from the library.
+  - **Live:** the API adds a default `package_split` of `[{ type: "other", vat: 0, value_*: 0 }]`
+    even when the unit values include VAT. **Do not derive VAT from `package_split`**; use the
+    with/without-tax unit values instead.
+  - **Live:** blocks also return `language`, `inventory_connected` and an ISO-string `updated_at`.
+    `optional` / `optional_picked` are absent unless set.
+  - Multi-product (package) blocks make line items nested and harder to normalize. Not seeded, so their shape is still spec-only.
+- **Verification status:** Verified (live) for simple product blocks. Verified (spec) for multi-product blocks.
 
 ## Product Catalog
 
@@ -141,11 +157,25 @@ Results of the Step 2 investigation (2026-10-09).
   Prices exist **only on proposal blocks**, as unit values with/without discount and
   with/without tax, plus the block `currency` and the proposal `tax_options.tax_included`.
 - **Limitations:**
-  - Cross-sell and upgrade uplift **cannot** be priced from the catalog API.
+  - Cross-sell and upgrade uplift **cannot** be priced from the catalog API. They are priced from
+    the app rate card `data/rate-card.json` (generated by the seed script, keyed by product and variation ID).
   - Extension uplift (more units of a product already in the proposal) **can** be priced
     deterministically from that block's own unit value.
-  - The smallest-currency-unit claim is not yet verified live.
-- **Verification status:** Verified (spec). This is an important constraint for Steps 4–6.
+  - Block values are in cents (verified live).
+  - **Live (2026-10-09):** the Proposales UI *can* store a catalog price. The user set a price on
+    "Standard Double Room" (190555/190482) in the UI. `GET /v3/content` (by `product_id`, by
+    `variation_id`, and with `include_sources=true`) still returns **no price or type field**, and the
+    response is identical to an unpriced product. UI catalog prices are therefore not reachable
+    through the public API, and products created through the API show no price and type "Other" in the UI.
+  - **Product type and unit are UI-only too.** The UI types are Food & Beverage, Accommodation,
+    Meeting Room, Package and Other. The UI units are day, night, week, month, year, h, kg, m,
+    m², person and unit (there is **no half day**). Neither field is in `ContentItem`,
+    `CreateContentRequest` or `UpdateContentRequest`. The only category-like field in the API is
+    the block-level `package_split[].type` (`accommodation | meetingRoom | food | other`).
+  - The rate card therefore also carries `category` and `unit`, using the UI vocabulary
+    (`food_and_beverage`, `meeting_room`, ...; `night`, `day`, `person`, `unit`). An optional
+    `unitLabel` says what one `unit` means (e.g. "half-day session", "trip").
+- **Verification status:** Verified (live). This is an important constraint for Steps 4–6.
 
 ## Optional Products
 
@@ -168,7 +198,10 @@ Results of the Step 2 investigation (2026-10-09).
   - A full block replacement means any mistake can drop existing items. A write must be built from a
     freshly fetched proposal and shown to the user before sending.
   - None of these endpoints sends or publishes a proposal. Sending is not part of the API.
-- **Verification status:** Verified (spec). Not exercised live: writes require explicit user approval.
+- **Live (create only):** `POST /v3/content` returns `{ data: { product_id, variation_id, message } }`.
+  `POST /v3/proposals` returns `{ proposal: { uuid, url } }` and creates a `draft` with no
+  recipient. Both were exercised by the approved seed runs. `PATCH` has not been exercised.
+- **Verification status:** Verified (live) for create. Verified (spec) for `PATCH`.
 
 ## Proposal Versioning
 
@@ -200,13 +233,19 @@ Answered:
 - Does the API expose product availability? → No.
 - Are catalog prices available? → **No**. Prices exist only on proposal blocks.
 
+Answered in Step 2a (live):
+- Does `block.content_id` reference `product_id` or `variation_id`? → `variation_id`.
+- Are block monetary values in the smallest currency unit? → Yes, cents.
+- How is `tax_included` reflected for `standard` tax mode? → Defaults to `false`. Blocks store
+  both values, and totals are sums of unit value × quantity.
+
 Still open:
-- **Test data:** decided. Seed through the API with a repeatable script (Step 2a). The archived
-  accidental items 190551/190552 are left untouched.
-- **Pricing source:** decided. An app-side rate card for cross-sell and upgrade; proposal block
-  prices for extensions (see `IMPLEMENTATION_PLAN.md`, Step 2 checkpoint).
-- Does `block.content_id` reference `product_id` or `variation_id`?
-- Are block monetary values in the smallest currency unit, as the spec says?
-- Can one proposal mix currencies (`block.currency` vs `proposal.currency`)?
-- How is `tax_included` reflected in block values for `standard` tax mode?
-- What is the live structure of `multi_product_data` and `package_split`?
+- Can one proposal mix currencies (`block.currency` vs `proposal.currency`)? The seeded data
+  is single-currency; Step 6 refuses to mix them either way.
+- What is the live structure of `multi_product_data` (packages)? Not seeded.
+- How do `PATCH /v3/proposals/{uuid}` and the 409 conflict behave? Only relevant if "apply to draft" is built in Step 7.
+- **Where should an integration read list prices?** Catalog prices set in the UI are not in the
+  public API. The spec references Oracle product codes (`external_id`), `integration_id` and
+  `integration_metadata`. This *suggests* (unverified) that prices may normally come from a
+  connected hotel system. To ask Proposales. Until answered, the app rate card stands in for
+  catalog list prices.

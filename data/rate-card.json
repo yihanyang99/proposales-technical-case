@@ -1,0 +1,129 @@
+{
+  "currency": "EUR",
+  "vatBasis": "excluded",
+  "priceUnit": "minor",
+  "products": [
+    {
+      "product_id": 190555,
+      "variation_id": 190482,
+      "key": "standard-room",
+      "title": "Standard Double Room",
+      "category": "accommodation",
+      "unit": "night",
+      "unitPrice": 14500,
+      "vatRate": 0.12
+    },
+    {
+      "product_id": 190556,
+      "variation_id": 190483,
+      "key": "superior-room",
+      "title": "Superior Double Room",
+      "category": "accommodation",
+      "unit": "night",
+      "unitPrice": 18500,
+      "vatRate": 0.12
+    },
+    {
+      "product_id": 190557,
+      "variation_id": 190484,
+      "key": "junior-suite",
+      "title": "Junior Suite",
+      "category": "accommodation",
+      "unit": "night",
+      "unitPrice": 26000,
+      "vatRate": 0.12
+    },
+    {
+      "product_id": 190553,
+      "variation_id": 190480,
+      "key": "meeting-half-day",
+      "title": "Meeting Room – Half Day",
+      "category": "meeting_room",
+      "unit": "unit",
+      "unitLabel": "half-day session",
+      "unitPrice": 45000,
+      "vatRate": 0.25
+    },
+    {
+      "product_id": 190558,
+      "variation_id": 190485,
+      "key": "meeting-full-day",
+      "title": "Meeting Room – Full Day",
+      "category": "meeting_room",
+      "unit": "day",
+      "unitPrice": 75000,
+      "vatRate": 0.25
+    },
+    {
+      "product_id": 190559,
+      "variation_id": 190486,
+      "key": "av-package",
+      "title": "AV Package",
+      "category": "meeting_room",
+      "unit": "day",
+      "unitPrice": 18000,
+      "vatRate": 0.25
+    },
+    {
+      "product_id": 190554,
+      "variation_id": 190481,
+      "key": "coffee-break",
+      "title": "Coffee Break",
+      "category": "food_and_beverage",
+      "unit": "person",
+      "unitPrice": 900,
+      "vatRate": 0.12
+    },
+    {
+      "product_id": 190560,
+      "variation_id": 190487,
+      "key": "business-lunch",
+      "title": "Business Lunch",
+      "category": "food_and_beverage",
+      "unit": "person",
+      "unitPrice": 3200,
+      "vatRate": 0.12
+    },
+    {
+      "product_id": 190561,
+      "variation_id": 190488,
+      "key": "three-course-dinner",
+      "title": "Three-Course Dinner",
+      "category": "food_and_beverage",
+      "unit": "person",
+      "unitPrice": 5800,
+      "vatRate": 0.12
+    },
+    {
+      "product_id": 190562,
+      "variation_id": 190489,
+      "key": "welcome-drink",
+      "title": "Welcome Drink Reception",
+      "category": "food_and_beverage",
+      "unit": "person",
+      "unitPrice": 1400,
+      "vatRate": 0.25
+    },
+    {
+      "product_id": 190563,
+      "variation_id": 190490,
+      "key": "airport-transfer",
+      "title": "Airport Transfer",
+      "category": "other",
+      "unit": "unit",
+      "unitLabel": "trip",
+      "unitPrice": 9500,
+      "vatRate": 0.06
+    },
+    {
+      "product_id": 190564,
+      "variation_id": 190491,
+      "key": "spa-access",
+      "title": "Spa Access",
+      "category": "other",
+      "unit": "person",
+      "unitPrice": 3500,
+      "vatRate": 0.25
+    }
+  ]
+}

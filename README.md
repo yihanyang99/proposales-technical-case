@@ -39,7 +39,8 @@ them, and leaves the salesperson in control.
 | 0 — Project Documentation | DONE |
 | 1 — Next.js Initialization | DONE |
 | 2 — Proposales API Investigation | DONE |
-| 2a–9 — Test data and features | TODO |
+| 2a — Test Data Seeding | DONE |
+| 3–9 — Features | TODO |
 
 See the implementation plan for details.
 
@@ -54,6 +55,20 @@ npm run dev                  # http://localhost:3000
 ```
 
 Checks: `npm run typecheck`, `npm run lint`, `npm run build`.
+
+### Test data
+
+The app expects hotel products and event proposals in the Proposales account. To seed an
+empty test account (EUR company):
+
+```bash
+npm run seed            # dry run: prints what would be created
+npm run seed -- --apply # creates 12 products and 4 draft proposals (no recipients, never sent)
+```
+
+The script is idempotent, and it regenerates `data/rate-card.json` with the product IDs of
+your account. The catalog API exposes no prices, product types or units, so the rate card
+supplies them. `npm run seed -- --rate-card` regenerates the rate card without creating anything.
 
 ## Documentation
 
