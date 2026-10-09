@@ -19,6 +19,12 @@ step-by-step plan.
 - Use the spec as the source for endpoints and schemas. Do not assume behavior that isn't in
   the spec or confirmed in `docs/API_FINDINGS.md`.
 - Use the spec to derive Zod schemas; it may also be used for type generation if that is justified.
+- Call the API only through `lib/proposales/client.ts`. Its schemas strip customer PII and
+  tolerate known spec drift (see `docs/API_FINDINGS.md`).
+- The catalog API has **no prices**. Cross-sell and upgrade prices come from the app rate card
+  (`data/rate-card.json`); extension prices come from the proposal's own blocks.
+- Never call write endpoints (`POST`/`PATCH`/`PUT`/`DELETE`) without explicit user approval
+  for that specific run.
 
 ## Architecture
 

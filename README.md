@@ -3,8 +3,8 @@
 An AI-powered revenue optimization assistant for hotel sales teams using
 [Proposales](https://proposales.com).
 
-> **Status:** Early development. The Next.js project is set up, but none of the
-> product functionality described below exists yet.
+> **Status:** Early development. The Next.js project and a read-only Proposales API client
+> are in place, but none of the product functionality described below exists yet.
 
 ## What it is
 
@@ -38,7 +38,8 @@ them, and leaves the salesperson in control.
 |------|--------|
 | 0 — Project Documentation | DONE |
 | 1 — Next.js Initialization | DONE |
-| 2–9 — API investigation and features | TODO |
+| 2 — Proposales API Investigation | DONE |
+| 2a–9 — Test data and features | TODO |
 
 See the implementation plan for details.
 
@@ -58,7 +59,7 @@ Checks: `npm run typecheck`, `npm run lint`, `npm run build`.
 
 - [Product requirements](docs/PRODUCT.md)
 - [Implementation plan](docs/IMPLEMENTATION_PLAN.md)
-- [API findings](docs/API_FINDINGS.md) (template; not yet investigated)
+- [API findings](docs/API_FINDINGS.md)
 - [Proposales OpenAPI spec](https://docs.proposales.com/openapi.json): the machine-readable
   API contract (OpenAPI 3.0); local snapshot in [docs/proposales-openapi.json](docs/proposales-openapi.json)
 - [Engineering guidelines for Claude Code](CLAUDE.md)
