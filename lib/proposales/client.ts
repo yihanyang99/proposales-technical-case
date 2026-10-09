@@ -95,6 +95,8 @@ export async function listCompanies(): Promise<Company[]> {
 export async function searchProposals(options: {
   companyId: number;
   includeArchived?: boolean;
+  /** Exact matches on keys of the proposal `data` metadata, sent as filter[key]=value. */
+  dataFilters?: Record<string, string>;
 }): Promise<ProposalSearchResult[]> {
   const params = new URLSearchParams({
     company_id: String(options.companyId),
@@ -102,6 +104,9 @@ export async function searchProposals(options: {
     exclude_revision_drafts: "true",
     include_archived: String(options.includeArchived ?? false),
   });
+  for (const [key, value] of Object.entries(options.dataFilters ?? {})) {
+    params.set(`filter[${key}]`, value);
+  }
   const { data } = await request(
     `/v3/proposal-search?${params}`,
     dataList(proposalSearchResultSchema),

@@ -52,6 +52,7 @@ step-by-step plan.
   server-only modules (e.g. `lib/env.ts`).
 - Read server secrets through `getServerEnv()` in `lib/env.ts` (Zod-validated, `server-only`).
 - Checks: `npm run typecheck`, `npm run lint`, `npm run build`. Dev server: `npm run dev`.
+- Test data: `npm run seed` (dry run). `--apply` writes to Proposales and needs explicit approval for each run.
 
 ## Security
 
