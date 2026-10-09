@@ -12,7 +12,7 @@ acceptance criteria, update this file, make one focused commit (with user approv
 | 1 | Next.js Initialization | DONE |
 | 2 | Proposales API Investigation (architecture checkpoint) | DONE |
 | 2a | Test Data Seeding (added at the Step 2 checkpoint) | DONE |
-| 3 | Proposal Retrieval & Selection | TODO |
+| 3 | Proposal Retrieval & Selection | DONE |
 | 4 | Product Catalog Integration | TODO |
 | 5 | AI Recommendation Engine | TODO |
 | 6 | Revenue Simulation | TODO |
@@ -219,13 +219,40 @@ every later step runs on real API data.
 **Dependencies:** Steps 2 and 2a.
 
 **Acceptance criteria:**
-- Real proposals are listed and can be selected.
-- The selected proposal's details and line items are displayed.
-- Invalid or unexpected API responses are handled gracefully.
+- [x] Real proposals are listed and can be selected (4 seeded proposals; title search and status filter).
+- [x] The selected proposal's details and line items are displayed (event context, line items, totals that match the API).
+- [x] Invalid or unexpected API responses are handled gracefully (unknown or malformed ID shows
+  "Proposal not found"; an invalid key shows an authorization message; unexpected errors fall back to `app/error.tsx`).
 
 **Expected commit:** `feat: add proposal retrieval and selection`
 
-**Status:** TODO
+**Notes:**
+- `lib/proposals/model.ts`: pure normalization (`toProposalSummary`, `toProposalDetail`,
+  `toLineItem`, `toEventContext`) and client-side filtering. Event context is parsed from
+  `data` metadata with per-field Zod fallbacks, so a bad field never hides the others.
+  Video blocks are skipped, and multi-product blocks are flagged as packages.
+- `lib/proposals/service.ts`: server-only fetch and normalize. `searchProposals` no longer
+  needs `company_id` (verified live: without it, the API searches every accessible company).
+- Routes: `/` (list) and `/proposals/[uuid]` (detail). Each reads `searchParams`/`params` inside
+  `<Suspense>`, as Cache Components requires (partial prerender: static shell plus streamed data).
+- Not-found is rendered inline, because a streamed response cannot change its HTTP status to 404.
+- Search is a title-only, case-insensitive match over the loaded proposals (the API has no text
+  search). Status uses **filter chips** (pill links with counts, only statuses present) instead of a
+  `<select>`, whose open menu cannot be styled. Both are URL-based: no client JavaScript, and unknown
+  `status` values are ignored.
+- The list shows "N proposals". The API-limit note appears only when the search returns its maximum (25).
+- Money is shown from minor units with `Intl.NumberFormat`. A missing price shows "Price unavailable".
+- **Branding:** matches the Proposales visual language without copying their brand assets:
+  - Switzer font (Fontshare, ITF Free Font License, self-hosted in `app/fonts/`).
+  - Monochrome design tokens in `app/globals.css`: grey page, white rounded surfaces, no borders,
+    pill controls, colour only for success and failure.
+  - Our own favicon and mark (`app/icon.svg`, `BrandMark`), with "Revenue Copilot · for Proposales"
+    in the header. The Proposales logo is deliberately not used.
+- **UI library:** `components/ui/` holds Button, Input, FieldLabel, Card, Chip/ChipGroup, Badge,
+  Dot, Alert, EmptyState, Skeleton, Page/PageHeader/SectionTitle and Table primitives. Pages
+  compose these, and the rules are in `CLAUDE.md` ("UI Library").
+
+**Status:** DONE
 
 ---
 
@@ -408,6 +435,9 @@ recommendation and for the selected set.
 - Step 0: Initial plan created.
 - Step 0 (addendum): Added a local snapshot of the Proposales OpenAPI spec as reference material.
 - Step 1: Next.js project initialized (see Step 1 notes).
+- Step 3: Proposal list and detail pages on live data.
+  Committed as three commits (brand styling, UI library, feature) instead of one, at the
+  user's request, to keep the review manageable. Each commit builds on its own.
 - Step 2a: Seeded 12 products and 4 draft proposals; open API questions answered live.
 - Step 2: Checkpoint. Added Step 2a (test data seeding). Steps 3–7 revised: rate card for
   pricing, client-side search filtering, stricter draft-update safeguards, Vitest moved to Step 6.

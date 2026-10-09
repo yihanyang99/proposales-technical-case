@@ -1,15 +1,13 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
+import { SiteHeader } from "@/components/site-header";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+const switzer = localFont({
+  src: "./fonts/Switzer-Variable.woff2",
+  weight: "100 900",
+  variable: "--font-switzer",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -19,11 +17,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col">{children}</body>
+    <html lang="en" className={`${switzer.variable} h-full antialiased`}>
+      <body className="flex min-h-full flex-col">
+        <SiteHeader />
+        {children}
+      </body>
     </html>
   );
 }

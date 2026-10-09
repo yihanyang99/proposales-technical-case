@@ -3,8 +3,8 @@
 An AI-powered revenue optimization assistant for hotel sales teams using
 [Proposales](https://proposales.com).
 
-> **Status:** Early development. The Next.js project and a read-only Proposales API client
-> are in place, but none of the product functionality described below exists yet.
+> **Status:** Early development. You can browse and open real Proposales proposals (line items
+> and totals). Recommendations, revenue simulation and feedback are not built yet.
 
 ## What it is
 
@@ -40,7 +40,8 @@ them, and leaves the salesperson in control.
 | 1 — Next.js Initialization | DONE |
 | 2 — Proposales API Investigation | DONE |
 | 2a — Test Data Seeding | DONE |
-| 3–9 — Features | TODO |
+| 3 — Proposal Retrieval & Selection | DONE |
+| 4–9 — Catalog, AI recommendations, revenue, feedback, deployment | TODO |
 
 See the implementation plan for details.
 

@@ -17,7 +17,8 @@ import {
 // require explicit user approval and are added only where a step needs them.
 
 const BASE_URL = "https://api.proposales.com";
-const SEARCH_LIMIT_MAX = 25;
+/** Maximum proposals per search (spec: 1–25, no pagination). */
+export const SEARCH_LIMIT_MAX = 25;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export type ProposalesErrorKind =
@@ -93,17 +94,18 @@ export async function listCompanies(): Promise<Company[]> {
 
 /** Returns up to 25 proposals, most recently updated first. The API has no pagination. */
 export async function searchProposals(options: {
-  companyId: number;
+  /** Optional: without it, the API searches every company the token can access. */
+  companyId?: number;
   includeArchived?: boolean;
   /** Exact matches on keys of the proposal `data` metadata, sent as filter[key]=value. */
   dataFilters?: Record<string, string>;
 }): Promise<ProposalSearchResult[]> {
   const params = new URLSearchParams({
-    company_id: String(options.companyId),
     limit: String(SEARCH_LIMIT_MAX), // The API default is 1.
     exclude_revision_drafts: "true",
     include_archived: String(options.includeArchived ?? false),
   });
+  if (options.companyId) params.set("company_id", String(options.companyId));
   for (const [key, value] of Object.entries(options.dataFilters ?? {})) {
     params.set(`filter[${key}]`, value);
   }

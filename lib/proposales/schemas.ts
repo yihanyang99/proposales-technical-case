@@ -36,6 +36,7 @@ export const proposalSearchResultSchema = z.object({
   title: z.string(),
   version: z.number().int().nullable(),
   status: proposalStatusSchema,
+  data: z.record(z.string(), z.unknown()),
   updated_at: z.number().int(),
 });
 
@@ -122,3 +123,4 @@ export type ContentItem = z.infer<typeof contentItemSchema>;
 export type ProposalSearchResult = z.infer<typeof proposalSearchResultSchema>;
 export type ProposalBlock = z.infer<typeof proposalBlockSchema>;
 export type Proposal = z.infer<typeof proposalSchema>;
+export type ProposalStatus = z.infer<typeof proposalStatusSchema>;
