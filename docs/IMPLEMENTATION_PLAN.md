@@ -15,7 +15,7 @@ acceptance criteria, update this file, make one focused commit (with user approv
 | 3 | Proposal Retrieval & Selection | DONE |
 | 4 | Product Catalog Integration | DONE |
 | 5 | AI Recommendation Engine | DONE |
-| 6 | Revenue Simulation | TODO |
+| 6 | Revenue Simulation | DONE |
 | 7 | Recommendation Feedback Loop | TODO |
 | 8 | Dashboard UI | TODO |
 | 9 | Testing & Vercel Deployment | TODO |
@@ -388,13 +388,37 @@ deterministically calculate the potential additional revenue for each one and fo
 **Dependencies:** Steps 4 and 5.
 
 **Acceptance criteria:**
-- Calculations are pure and deterministic, and the unit tests pass.
-- Currencies and VAT bases are never mixed.
-- Missing pricing is surfaced, not hidden.
+- [x] Calculations are pure and deterministic, and the unit tests pass (Vitest: 65 tests
+  in 6 files; a deliberate bug in the total makes them fail).
+- [x] Currencies and VAT bases are never mixed (`calculateUplift` returns null on a currency
+  mismatch; values and totals use the proposal's VAT basis).
+- [x] Missing pricing is surfaced, not hidden ("Value unavailable", which can't be included and
+  is never counted).
 
 **Expected commit:** `feat: add deterministic revenue simulation`
 
-**Status:** TODO
+**Notes:**
+- `lib/revenue/simulation.ts` (pure, used in the browser): `opportunityAmount` (unit price minus
+  the replaced unit price, × quantity) and `simulateTotals` (current + selected = potential;
+  opportunities without a value are never counted).
+- Each card has an **Include** toggle and a **quantity stepper** (`QuantityInput`, a new UI
+  component). The calculation line, value and running total update live. Quantity limits:
+  1–10,000, and an upgrade can't exceed the booked units. The calculation always shows the plain
+  number. The AI's reasoning appears under the stepper as "Suggested: 80 guests", which stays
+  visible after an edit and resets the quantity when clicked. Nothing is selected by default.
+- Titles: Add / Upgrade / Extend + item. An extension spells out its verified breakdown
+  ("Extend Standard Double Room by 1 night for 20 rooms") via `describeExtension`. After an edit,
+  or without a breakdown, it falls back to plain units ("(21 room-nights)"). The prompt asks for
+  "N rooms × M nights" breakdowns.
+- A **Simulation** card below the opportunities shows the current proposal total, the selected
+  opportunities and the potential total, on the proposal's VAT basis. Each new "Find again" run
+  resets the selection.
+- Vitest covers the revenue math, the simulation, the recommendation validation and quantity
+  labels, the catalog join, the proposal model, and the Proposales client's error mapping
+  (with a fake `fetch`). `server-only` is aliased to an empty module in `vitest.config.mts`.
+- Also on this branch: `refactor: move vat column next to item in line items`.
+
+**Status:** DONE
 
 ---
 
@@ -459,8 +483,7 @@ deterministically calculate the potential additional revenue for each one and fo
 **Goal:** Verify critical logic and deploy a working instance to Vercel.
 
 **Tasks:**
-- Make sure tests cover revenue calculations, product ID validation, and the feedback
-  schema validation.
+- Extend the tests (Vitest, set up in Step 6) to the feedback schema validation from Step 7.
 - Run lint, typecheck, tests and the production build.
 - Configure Vercel environment variables (server-only), including `OPENAI_API_KEY`, and make
   sure `RECOMMENDATIONS_MODE` is unset or `live` in production.
@@ -504,3 +527,5 @@ deterministically calculate the potential additional revenue for each one and fo
   Steps 6–7 revised: Step 6 adds selecting opportunities and editing quantities, with a running
   total; Step 7 stores accepted quantities as feedback. Step 9 adds deployment protection and an
   OpenAI spending limit (code review).
+- Step 6: Opportunity selection, quantity editing and a running potential total; Vitest set up
+  with 65 tests covering revenue, validation, catalog, proposal model and client error mapping.
