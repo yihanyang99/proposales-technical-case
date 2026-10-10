@@ -254,7 +254,7 @@ function OpportunityList({
   const totals = simulateTotals(lines);
 
   return (
-    <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
+    <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
       <ul className="space-y-3">
         {recommendations.map((r) => {
           const choice = choices[r.id];
@@ -604,6 +604,36 @@ function RecommendationCard({
   const dismissing = choice.status === "pending" && choice.dismissing;
   const suggestion = r.quantityLabel ?? `${r.quantity}${r.unit ? ` ${r.unit}` : ""}`;
   const edited = quantity !== r.quantity;
+  // Top right from tablet up; at the bottom of the card, full width, on phones.
+  const actions = (wide: boolean) => (
+    <div className="flex items-center gap-2">
+      {!accepted && (
+        <Button size="sm" variant="ghost" onClick={onStartDismiss}>
+          Not a fit
+        </Button>
+      )}
+      <Button
+        size="sm"
+        variant={accepted ? "primary" : "soft"}
+        className={wide ? "flex-1" : undefined}
+        aria-pressed={accepted}
+        aria-label={accepted ? "Added, select to remove" : undefined}
+        onClick={accepted ? onUndo : onAccept}
+      >
+        <svg aria-hidden="true" viewBox="0 0 16 16" className="-ml-1 size-4">
+          <path
+            d={accepted ? "M3.5 8.5l3 3 6-7" : "M8 3.5v9M3.5 8h9"}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+        {accepted ? "Added" : "Add to proposal"}
+      </Button>
+    </div>
+  );
 
   return (
     <Card className="p-5">
@@ -615,38 +645,7 @@ function RecommendationCard({
             {FIT_LABEL[r.confidence]}
           </span>
         </div>
-        {inProposal ? (
-          <Badge tone="success">In proposal</Badge>
-        ) : (
-          !dismissing && (
-            <div className="flex items-center gap-2">
-              {!accepted && (
-                <Button size="sm" variant="ghost" onClick={onStartDismiss}>
-                  Not a fit
-                </Button>
-              )}
-              <Button
-                size="sm"
-                variant={accepted ? "primary" : "soft"}
-                aria-pressed={accepted}
-                aria-label={accepted ? "Added, select to remove" : undefined}
-                onClick={accepted ? onUndo : onAccept}
-              >
-                <svg aria-hidden="true" viewBox="0 0 16 16" className="-ml-1 size-4">
-                  <path
-                    d={accepted ? "M3.5 8.5l3 3 6-7" : "M8 3.5v9M3.5 8h9"}
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-                {accepted ? "Added" : "Add to proposal"}
-              </Button>
-            </div>
-          )
-        )}
+        {inProposal ? <Badge tone="success">In proposal</Badge> : !dismissing && <div className="hidden sm:block">{actions(false)}</div>}
       </div>
       <p className="mt-3 font-medium text-heading">{fullTitle(r)}</p>
       <p className="mt-1 text-sm">{r.explanation}</p>
@@ -699,6 +698,7 @@ function RecommendationCard({
           )}
         </div>
       </div>
+      {!inProposal && !dismissing && <div className="mt-5 sm:hidden">{actions(true)}</div>}
       {dismissing && <DismissForm id={r.id} onDismiss={onDismiss} onCancel={onCancelDismiss} />}
       {error && <SaveError message={error} onRetry={onRetry} />}
     </Card>
