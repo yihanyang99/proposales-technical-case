@@ -28,9 +28,11 @@ separately)
 
 ```
 Browser (React, client components)
-  │  server actions only: findOpportunities, saveFeedback / clearFeedback, applyProposalUpdate
+  │  server actions only: findOpportunities, saveFeedback / clearFeedback, applyProposalUpdate, signIn
   ▼
 Next.js 16 on Vercel (App Router, Server Components, fra1)
+  ├─ proxy.ts             requires the signed session cookie on every page and server action (/login)
+  ├─ lib/auth/            shared-password check and session tokens (pure)
   ├─ lib/proposales/      API client (Zod schemas strip customer PII; the only place that calls Proposales)
   ├─ lib/proposals/       proposal model, draft update planner (pure) + service (the only writes)
   ├─ lib/catalog/         content library + rate card join, product status in a proposal
@@ -44,7 +46,7 @@ Next.js 16 on Vercel (App Router, Server Components, fra1)
 
 - All API keys stay on the server; the browser only calls server actions, which validate their
   input with Zod and re-derive everything (prices, line items) from fresh server-side data.
-- Business logic is pure and unit-tested (`lib/**`, 106 tests); UI lives in `app/` and
+- Business logic is pure and unit-tested (`lib/**`, 117 tests); UI lives in `app/` and
   `components/` (a small design-token UI library in `components/ui/`).
 
 ## How the LLM is used
@@ -59,10 +61,10 @@ runs server-side (`lib/recommendations/`).
   catalog product id, the line item it relates to, a quantity with a short breakdown
   ("20 rooms × 1 night"), an explanation for the salesperson, a qualitative fit, and the
   suggestions it conflicts with. There are no price fields, so the model can't supply prices.
-- **The prompt** contains only what the AI needs: the event facts (type, guests, dates, days,
-  nights), the line items, the hotel catalog with list prices, and the dismissals the
-  salesperson already gave for this proposal, with their reason. No customer names, emails or
-  free-text comments.
+- **The prompt** contains only what the AI needs: the proposal title and description, the event
+  facts (type, guests, dates, days, nights), the line items, the hotel catalog with list prices,
+  and the dismissals the salesperson already gave for this proposal, with their reason. No
+  recipient or contact data, and no free-text comments.
 - **Guardrails in code** (`validateRecommendations`): unknown products or line items, cross-sells
   already in the proposal, upgrades in another category or not more expensive, invalid
   quantities, duplicates and anything beyond three are dropped. Conflicts are linked both ways,
@@ -91,8 +93,8 @@ runs server-side (`lib/recommendations/`).
 - **Feedback in Postgres (Neon).** It must survive deploys, be shared by the team and be
   queryable. Dismissal reasons are fed into the next prompt; free-text comments never are,
   because they may name the customer.
-- **Privacy.** Customer PII (recipient, contact, signatures) is stripped at the API boundary
-  and never reaches logs, the UI or the model.
+- **Privacy.** Customer contact data (recipient, contact, signatures) is stripped at the API
+  boundary and never reaches logs, the UI or the model.
 
 ## Limitations
 
@@ -109,7 +111,7 @@ runs server-side (`lib/recommendations/`).
 
 ## Run it locally
 
-Requires Node.js 20.9 or later.
+Requires Node.js 22 LTS or later (Next.js 16 needs at least 20.9).
 
 ```bash
 npm install
@@ -150,6 +152,7 @@ npm run seed -- --apply # creates 12 products and 4 draft proposals (no recipien
 ```
 
 The script is idempotent and regenerates `data/rate-card.json` with your account's product IDs.
+It doesn't reset drafts that were changed in the app (for example by "Update draft").
 `npm run seed -- --rate-card` regenerates the rate card without creating anything.
 
 ## Deployment
