@@ -67,7 +67,7 @@ async function ProposalView({ params }: { params: PageProps<"/proposals/[uuid]">
               href={proposalEditorUrl(proposal.uuid)}
               target="_blank"
               rel="noreferrer"
-              className={cn(buttonStyles({ variant: "soft", size: "sm" }), "ml-auto")}
+              className={cn(buttonStyles({ variant: "soft", size: "sm" }), "sm:ml-auto")}
             >
               Open in Proposales
               <svg aria-hidden="true" viewBox="0 0 16 16" className="-mr-1 size-3.5">
@@ -131,7 +131,7 @@ function LineItemsTable({ proposal }: { proposal: ProposalDetail }) {
   if (optional.length === 0) return lineItems;
 
   return (
-    <div className="grid gap-10 lg:grid-cols-2 lg:gap-3">
+    <div className="grid grid-cols-1 gap-10 lg:grid-cols-2 lg:gap-3">
       {lineItems}
       <section>
         <SectionTitle>Optional extras</SectionTitle>
@@ -162,34 +162,44 @@ function ItemsTable({
 }) {
   return (
     // Fixed layout, so both tables share the same column widths whatever their content; long names wrap.
+    // On phones the unit price moves under the item name, so Item, Qty and Amount fit without scrolling.
     <Table className="table-fixed" footer={<Totals note={note} rows={totalsRows({ ...totals, currency })} />}>
       <colgroup>
         <col />
-        <col className="w-20" />
-        <col className="w-28" />
+        <col className="w-16 sm:w-20" />
+        <col className="hidden w-28 sm:table-column" />
         <col className="w-32" />
       </colgroup>
       <TableHead>
         <tr>
           <TableHeaderCell>Item</TableHeaderCell>
           <TableHeaderCell align="right" className="whitespace-nowrap">Qty</TableHeaderCell>
-          <TableHeaderCell align="right" className="whitespace-nowrap">Unit price</TableHeaderCell>
+          <TableHeaderCell align="right" className="hidden whitespace-nowrap sm:table-cell">Unit price</TableHeaderCell>
           <TableHeaderCell align="right" className="whitespace-nowrap">Amount</TableHeaderCell>
         </tr>
       </TableHead>
       <tbody>
-        {items.map((item) => (
-          <tr key={item.id} className="align-top">
-            <TableCell>
-              <span className="font-medium text-heading">{item.title}</span>
-              {item.kind === "package" && <span className="ml-2 text-xs text-muted">(package)</span>}
-              {item.vatRate !== null && <span className="mt-0.5 block text-xs text-muted">{formatPercent(item.vatRate)} VAT</span>}
-            </TableCell>
-            <TableCell numeric>{item.quantity ?? "–"}</TableCell>
-            <TableCell numeric>{formatMoney(vatIncluded ? item.unitPriceInclVat : item.unitPriceExclVat, item.currency)}</TableCell>
-            <TableCell numeric>{formatMoney(vatIncluded ? item.totalInclVat : item.totalExclVat, item.currency)}</TableCell>
-          </tr>
-        ))}
+        {items.map((item) => {
+          const unitPrice = formatMoney(vatIncluded ? item.unitPriceInclVat : item.unitPriceExclVat, item.currency);
+          return (
+            <tr key={item.id} className="align-top">
+              <TableCell>
+                <span className="font-medium text-heading">{item.title}</span>
+                {item.kind === "package" && <span className="ml-2 text-xs text-muted">(package)</span>}
+                <span className="mt-0.5 block text-xs text-muted">
+                  <span className="sm:hidden">
+                    {unitPrice}
+                    {item.vatRate !== null && " · "}
+                  </span>
+                  {item.vatRate !== null && `${formatPercent(item.vatRate)} VAT`}
+                </span>
+              </TableCell>
+              <TableCell numeric>{item.quantity ?? "–"}</TableCell>
+              <TableCell numeric className="hidden sm:table-cell">{unitPrice}</TableCell>
+              <TableCell numeric>{formatMoney(vatIncluded ? item.totalInclVat : item.totalExclVat, item.currency)}</TableCell>
+            </tr>
+          );
+        })}
       </tbody>
     </Table>
   );
