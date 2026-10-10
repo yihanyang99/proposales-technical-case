@@ -194,11 +194,11 @@ function SimulationSummary({
         <dl className="mt-3 space-y-2 text-sm">
           {lines.map((line) => (
             <div key={line.id} className="flex justify-between gap-4">
-              <dt>
+              <dt className="text-body">
                 {line.label}
-                {line.vatRate !== null && <span className="block text-xs text-muted">{formatPercent(line.vatRate)} VAT</span>}
+                {line.vatRate !== null && <span className="mt-0.5 block text-xs text-muted">{formatPercent(line.vatRate)} VAT</span>}
               </dt>
-              <dd className="shrink-0 whitespace-nowrap tabular-nums">{money(line.amount)}</dd>
+              <dd className="shrink-0 whitespace-nowrap text-body tabular-nums">{money(line.amount)}</dd>
             </div>
           ))}
           <div className="flex justify-between gap-4 border-t border-divider pt-3 text-muted">
