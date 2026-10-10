@@ -423,6 +423,8 @@ deterministically calculate the potential additional revenue for each one and fo
   the other (`toggleSelection`), and the card says "Alternative to …: only one can be included".
   An upgrade and an extension of the same line stay combinable; when both are included, the
   extension notes that it is priced at the original rate, not the upgrade.
+- The confidence level is shown as fit ("Strong fit", "Good fit", "Possible fit"), matching what
+  the prompt asks for; the field keeps the name `confidence`.
 - Also on this branch: `refactor: move vat column next to item in line items`.
 
 **Status:** DONE

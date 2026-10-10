@@ -10,6 +10,7 @@
   --surface-inverse: #111f1e; /* Proposales deep green-black, for dark feature sections */
   --surface-glass: #ffffffb3;
   --badge: #0000000f;
+  --badge-hover: #0000001a;
   --divider: #0000001f; /* only for separating totals, see CLAUDE.md */
   --text-heading: #292929;
   --text-body: #353535;
@@ -30,6 +31,7 @@
     --surface-inverse: #111f1e;
     --surface-glass: #00000099;
     --badge: #ffffff1a;
+    --badge-hover: #ffffff2e;
     --divider: #ffffff26;
     --text-heading: #ffffff;
     --text-body: #eeeeee;
@@ -48,6 +50,7 @@
   --color-surface-inverse: var(--surface-inverse);
   --color-surface-glass: var(--surface-glass);
   --color-badge: var(--badge);
+  --color-badge-hover: var(--badge-hover);
   --color-divider: var(--divider);
   --color-heading: var(--text-heading);
   --color-body: var(--text-body);

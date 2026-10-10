@@ -15,10 +15,10 @@ const TYPE_LABEL: Record<RecommendationView["type"], string> = {
 
 const CONFIDENCE_LEVEL: Record<RecommendationView["confidence"], number> = { low: 1, medium: 2, high: 3 };
 
-const CONFIDENCE_LABEL: Record<RecommendationView["confidence"], string> = {
-  low: "Low confidence",
-  medium: "Medium confidence",
-  high: "High confidence",
+const FIT_LABEL: Record<RecommendationView["confidence"], string> = {
+  low: "Possible fit",
+  medium: "Good fit",
+  high: "Strong fit",
 };
 
 function shortTitle(r: RecommendationView): string {
@@ -221,19 +221,28 @@ function RecommendationCard({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <Badge tone="strong">{TYPE_LABEL[r.type]}</Badge>
-          <span className="inline-flex items-center gap-1.5 text-xs text-muted" title="Qualitative fit, not a likelihood of purchase">
+          <span className="inline-flex items-center gap-1.5 text-xs text-muted" title="How well this fits the event, as judged by the AI. Not a likelihood of purchase.">
             <LevelBars level={CONFIDENCE_LEVEL[r.confidence]} />
-            {CONFIDENCE_LABEL[r.confidence]}
+            {FIT_LABEL[r.confidence]}
           </span>
         </div>
         <Button
           size="sm"
-          variant={selected ? "primary" : "secondary"}
-          className={selected ? undefined : "bg-surface-1"}
+          variant={selected ? "primary" : "soft"}
           aria-pressed={selected}
           disabled={!r.uplift}
           onClick={onToggle}
         >
+          <svg aria-hidden="true" viewBox="0 0 16 16" className="-ml-1 size-4">
+            <path
+              d={selected ? "M3.5 8.5l3 3 6-7" : "M8 3.5v9M3.5 8h9"}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
           {selected ? "Included" : "Include"}
         </Button>
       </div>

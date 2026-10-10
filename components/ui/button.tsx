@@ -1,12 +1,13 @@
 import type { ComponentProps } from "react";
 import { cn } from "@/lib/cn";
 
-export type ButtonVariant = "primary" | "secondary" | "ghost";
+export type ButtonVariant = "primary" | "secondary" | "soft" | "ghost";
 export type ButtonSize = "sm" | "md" | "lg";
 
 const VARIANTS: Record<ButtonVariant, string> = {
   primary: "bg-primary text-on-primary hover:bg-primary-hover",
   secondary: "bg-surface-2 text-heading hover:bg-surface-3",
+  soft: "bg-badge text-heading hover:bg-badge-hover",
   ghost: "text-heading hover:bg-surface-3",
 };
 
