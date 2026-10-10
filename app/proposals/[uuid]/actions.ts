@@ -4,7 +4,7 @@ import { z } from "zod";
 import { describeError, isNotFound } from "@/lib/proposales/errors";
 import { generateRecommendations, RecommendationError } from "@/lib/recommendations/engine";
 import type { Confidence, RecommendationType } from "@/lib/recommendations/model";
-import { MAX_QUANTITY } from "@/lib/revenue/simulation";
+import { MAX_QUANTITY, type PricedOpportunity } from "@/lib/revenue/simulation";
 
 export type RecommendationView = {
   id: string;
@@ -35,6 +35,9 @@ export type RecommendationView = {
     unitPrice: number;
     replacedUnitPrice: number | null;
     vatRate: number | null;
+    /** The same prices on both VAT bases, for the simulation's VAT breakdown. */
+    exclVat: PricedOpportunity;
+    inclVat: PricedOpportunity;
   } | null;
 };
 
@@ -78,6 +81,8 @@ export async function findOpportunities(_previous: RecommendationsState, formDat
           unitPrice: incl ? r.uplift.unitPriceInclVat : r.uplift.unitPriceExclVat,
           replacedUnitPrice: incl ? r.uplift.replacedUnitPriceInclVat : r.uplift.replacedUnitPriceExclVat,
           vatRate: r.uplift.vatRate,
+          exclVat: { unitPrice: r.uplift.unitPriceExclVat, replacedUnitPrice: r.uplift.replacedUnitPriceExclVat },
+          inclVat: { unitPrice: r.uplift.unitPriceInclVat, replacedUnitPrice: r.uplift.replacedUnitPriceInclVat },
         },
       })),
     };

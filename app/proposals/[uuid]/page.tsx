@@ -70,7 +70,6 @@ async function ProposalView({ params }: { params: PageProps<"/proposals/[uuid]">
       <LineItemsTable proposal={proposal} />
       <RecommendationsPanel
         proposalUuid={proposal.uuid}
-        currentTotal={proposal.vatIncluded ? proposal.totalInclVat : proposal.totalExclVat}
         currency={proposal.currency}
         vatIncluded={proposal.vatIncluded}
       />

@@ -375,8 +375,9 @@ deterministically calculate the potential additional revenue for each one and fo
 - **Select opportunities** to include in the simulation, and **edit the quantity** per
   opportunity (an integer from 1 to 10,000). The amount always stays list price × quantity, so it is
   never typed in directly; the calculation line and value update immediately.
-- Show a running total: the current proposal total, the selected opportunities, and the potential
-  new total, on the proposal's VAT basis.
+- Show a running total of the selected opportunities, on the proposal's VAT basis. *(Revised: the
+  current proposal total is no longer repeated; it is already in the line items above. The
+  summary shows the selected opportunities with subtotal, VAT and potential revenue incl. VAT.)*
 - Work in integer minor units (as confirmed in Step 2a), and use one VAT basis per proposal
   (block values without tax unless the proposal is tax-inclusive).
 - Refuse to add amounts that use different currencies or VAT bases. Return an explicit
@@ -388,7 +389,7 @@ deterministically calculate the potential additional revenue for each one and fo
 **Dependencies:** Steps 4 and 5.
 
 **Acceptance criteria:**
-- [x] Calculations are pure and deterministic, and the unit tests pass (Vitest: 65 tests
+- [x] Calculations are pure and deterministic, and the unit tests pass (Vitest: 70 tests
   in 6 files; a deliberate bug in the total makes them fail).
 - [x] Currencies and VAT bases are never mixed (`calculateUplift` returns null on a currency
   mismatch; values and totals use the proposal's VAT basis).
@@ -410,9 +411,11 @@ deterministically calculate the potential additional revenue for each one and fo
   ("Extend Standard Double Room by 1 night for 20 rooms") via `describeExtension`. After an edit,
   or without a breakdown, it falls back to plain units ("(21 room-nights)"). The prompt asks for
   "N rooms × M nights" breakdowns.
-- A **Simulation** card below the opportunities shows the current proposal total, the selected
-  opportunities and the potential total, on the proposal's VAT basis. Each new "Find again" run
-  resets the selection.
+- A **Potential revenue** card (beside the opportunities and sticky on large screens, below them on
+  smaller ones) lists only the included opportunities, by name, on the
+  proposal's VAT basis, then their subtotal excl. VAT, VAT and total incl. VAT
+  (`simulateTotals`, from the server's prices on both bases, so rounding matches the cards).
+  Each new "Find again" run resets the selection.
 - Vitest covers the revenue math, the simulation, the recommendation validation and quantity
   labels, the catalog join, the proposal model, and the Proposales client's error mapping
   (with a fake `fetch`). `server-only` is aliased to an empty module in `vitest.config.mts`.
@@ -420,9 +423,9 @@ deterministically calculate the potential additional revenue for each one and fo
   options for the same slot). Validation adds the structural ones it can't miss (two upgrades of
   the same line item, an upgrade and a cross-sell of the same product), ignores references to
   dropped or unknown suggestions and makes the links symmetric. Including one alternative removes
-  the other (`toggleSelection`), and the card says "Alternative to …: only one can be included".
-  An upgrade and an extension of the same line stay combinable; when both are included, the
-  extension notes that it is priced at the original rate, not the upgrade.
+  the other (`toggleSelection`). An upgrade and an extension of the same line stay combinable;
+  when both are included, the extension is priced at the original rate, not the upgrade. Both
+  cases are explained in a notice above the Potential revenue card.
 - The confidence level is shown as fit ("Strong fit", "Good fit", "Possible fit"), matching what
   the prompt asks for; the field keeps the name `confidence`.
 - Also on this branch: `refactor: move vat column next to item in line items`.
@@ -540,3 +543,5 @@ deterministically calculate the potential additional revenue for each one and fo
   with 65 tests covering revenue, validation, catalog, proposal model and client error mapping.
 - Step 6: Conflicting opportunities: the model's judgement plus structural rules; alternatives
   can't be included together, and an extension notes when it is priced below an included upgrade.
+- Step 6: The Potential revenue card sits beside the opportunities and lists only the selected
+  ones, with subtotal, VAT and total incl. VAT.

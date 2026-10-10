@@ -15,28 +15,19 @@ export function opportunityAmount(opportunity: PricedOpportunity, quantity: numb
   return (opportunity.unitPrice - (opportunity.replacedUnitPrice ?? 0)) * quantity;
 }
 
-export type SimulationLine = { selected: boolean; amount: number | null };
+export type SimulationLine = { selected: boolean; exclVat: number | null; inclVat: number | null };
 
-export type SimulationTotals = {
-  /** Proposal total before any opportunity, or null if unknown. */
-  current: number | null;
-  /** Sum of selected opportunities that have a value. */
-  added: number;
-  selectedCount: number;
-  /** current + added, or null when the current total is unknown. */
-  potential: number | null;
-};
+export type SimulationTotals = { selectedCount: number; exclVat: number; vat: number; inclVat: number };
 
-/** Running totals for the selection. Opportunities without a value are never counted. */
-export function simulateTotals(currentTotal: number | null, lines: SimulationLine[]): SimulationTotals {
-  const counted = lines.filter((line): line is { selected: true; amount: number } => line.selected && line.amount !== null);
-  const added = counted.reduce((sum, line) => sum + line.amount, 0);
-  return {
-    current: currentTotal,
-    added,
-    selectedCount: counted.length,
-    potential: currentTotal === null ? null : currentTotal + added,
-  };
+/** Totals of the selected opportunities on both VAT bases. Opportunities without a value are never counted. */
+export function simulateTotals(lines: SimulationLine[]): SimulationTotals {
+  const counted = lines.filter(
+    (line): line is { selected: true; exclVat: number; inclVat: number } =>
+      line.selected && line.exclVat !== null && line.inclVat !== null,
+  );
+  const exclVat = counted.reduce((sum, line) => sum + line.exclVat, 0);
+  const inclVat = counted.reduce((sum, line) => sum + line.inclVat, 0);
+  return { selectedCount: counted.length, exclVat, vat: inclVat - exclVat, inclVat };
 }
 
 /** Includes or removes one opportunity; including it removes its alternatives. */

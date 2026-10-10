@@ -12,26 +12,23 @@ describe("opportunityAmount", () => {
 });
 
 describe("simulateTotals", () => {
-  it("adds only selected opportunities to the current total", () => {
-    const totals = simulateTotals(1242000, [
-      { selected: true, amount: 72000 },
-      { selected: false, amount: 160000 },
-      { selected: true, amount: 75000 },
-    ]);
-    expect(totals).toEqual({ current: 1242000, added: 147000, selectedCount: 2, potential: 1389000 });
+  it("sums only selected opportunities on both VAT bases and breaks out the VAT", () => {
+    expect(
+      simulateTotals([
+        { selected: true, exclVat: 72000, inclVat: 80640 },
+        { selected: false, exclVat: 160000, inclVat: 179200 },
+        { selected: true, exclVat: 290000, inclVat: 324800 },
+      ]),
+    ).toEqual({ selectedCount: 2, exclVat: 362000, vat: 43440, inclVat: 405440 });
   });
 
   it("ignores selected opportunities without a value", () => {
-    const totals = simulateTotals(1000, [{ selected: true, amount: null }]);
-    expect(totals).toEqual({ current: 1000, added: 0, selectedCount: 0, potential: 1000 });
-  });
-
-  it("has no potential total when the current total is unknown", () => {
-    expect(simulateTotals(null, [{ selected: true, amount: 500 }]).potential).toBeNull();
-  });
-
-  it("returns the current total when nothing is selected", () => {
-    expect(simulateTotals(5000, [])).toEqual({ current: 5000, added: 0, selectedCount: 0, potential: 5000 });
+    expect(simulateTotals([{ selected: true, exclVat: null, inclVat: null }])).toEqual({
+      selectedCount: 0,
+      exclVat: 0,
+      vat: 0,
+      inclVat: 0,
+    });
   });
 });
 
@@ -50,3 +47,4 @@ describe("toggleSelection", () => {
     expect(toggleSelection(choices, "b", ["c"])).toEqual({ ...choices, b: { selected: false, quantity: 2 } });
   });
 });
+

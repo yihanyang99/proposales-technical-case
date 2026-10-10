@@ -5,7 +5,7 @@ import { findOpportunities, type RecommendationsState, type RecommendationView }
 import { Alert, Badge, Button, Card, EmptyState, LevelBars, QuantityInput, SectionTitle, Spinner } from "@/components/ui";
 import { formatMoney, formatPercent } from "@/lib/format";
 import { describeExtension } from "@/lib/recommendations/model";
-import { MIN_QUANTITY, opportunityAmount, simulateTotals, toggleSelection } from "@/lib/revenue/simulation";
+import { MIN_QUANTITY, opportunityAmount, simulateTotals, toggleSelection, type SimulationTotals } from "@/lib/revenue/simulation";
 
 const TYPE_LABEL: Record<RecommendationView["type"], string> = {
   cross_sell: "Cross-sell",
@@ -27,13 +27,11 @@ function shortTitle(r: RecommendationView): string {
 
 type PanelProps = {
   proposalUuid: string;
-  /** Proposal total on its own VAT basis, minor units. */
-  currentTotal: number | null;
   currency: string | null;
   vatIncluded: boolean;
 };
 
-export function RecommendationsPanel({ proposalUuid, currentTotal, currency, vatIncluded }: PanelProps) {
+export function RecommendationsPanel({ proposalUuid, currency, vatIncluded }: PanelProps) {
   const [state, action, pending] = useActionState<RecommendationsState, FormData>(findOpportunities, { status: "idle" });
 
   return (
@@ -74,7 +72,6 @@ export function RecommendationsPanel({ proposalUuid, currentTotal, currency, vat
         <OpportunityList
           key={state.runId}
           recommendations={state.recommendations}
-          currentTotal={currentTotal}
           currency={currency}
           vatIncluded={vatIncluded}
         />
@@ -94,7 +91,6 @@ type Choice = { selected: boolean; quantity: number };
 
 function OpportunityList({
   recommendations,
-  currentTotal,
   currency,
   vatIncluded,
 }: { recommendations: RecommendationView[] } & Omit<PanelProps, "proposalUuid">) {
@@ -105,49 +101,83 @@ function OpportunityList({
     setChoices((current) => ({ ...current, [id]: { ...current[id], ...change } }));
   const toggle = (r: RecommendationView) => setChoices((current) => toggleSelection(current, r.id, r.conflictsWith));
 
-  const alternativesOf = (r: RecommendationView) =>
-    recommendations.filter((other) => r.conflictsWith.includes(other.id)).map(shortTitle);
-  const pricingNote = (r: RecommendationView) => {
-    if (r.type !== "extension" || !choices[r.id].selected) return null;
+  const notes: string[] = [];
+  recommendations.forEach((r, index) => {
+    for (const other of recommendations.slice(index + 1)) {
+      if (r.conflictsWith.includes(other.id)) {
+        notes.push(`${shortTitle(r)} and ${shortTitle(other)} are alternatives: only one can be included.`);
+      }
+    }
+  });
+  for (const r of recommendations) {
+    if (r.type !== "extension" || !choices[r.id].selected) continue;
     const upgrade = recommendations.find((o) => o.type === "upgrade" && o.lineItemId === r.lineItemId && choices[o.id].selected);
-    return upgrade ? `Priced at the ${r.productTitle} rate, not the upgraded ${upgrade.productTitle}.` : null;
-  };
+    if (upgrade) notes.push(`${shortTitle(r)} is priced at the ${r.productTitle} rate, not the upgraded ${upgrade.productTitle}.`);
+  }
 
-  const totals = simulateTotals(
-    currentTotal,
-    recommendations.map((r) => ({
-      selected: choices[r.id].selected,
-      amount: r.uplift ? opportunityAmount(r.uplift, choices[r.id].quantity) : null,
-    })),
-  );
+  const lines = recommendations.map((r) => {
+    const { quantity, selected } = choices[r.id];
+    return {
+      id: r.id,
+      label: shortTitle(r),
+      selected,
+      amount: r.uplift ? opportunityAmount(r.uplift, quantity) : null,
+      exclVat: r.uplift ? opportunityAmount(r.uplift.exclVat, quantity) : null,
+      inclVat: r.uplift ? opportunityAmount(r.uplift.inclVat, quantity) : null,
+    };
+  });
+  const totals = simulateTotals(lines);
+  const selectedLines = lines.filter((line) => line.selected && line.amount !== null);
 
   return (
-    <>
+    <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
       <ul className="space-y-3">
         {recommendations.map((recommendation) => (
           <li key={recommendation.id}>
             <RecommendationCard
               recommendation={recommendation}
               choice={choices[recommendation.id]}
-              alternatives={alternativesOf(recommendation)}
-              pricingNote={pricingNote(recommendation)}
               onToggle={() => toggle(recommendation)}
               onChange={(change) => update(recommendation.id, change)}
             />
           </li>
         ))}
       </ul>
-      {currency && <SimulationSummary totals={totals} currency={currency} vatIncluded={vatIncluded} />}
-    </>
+      <div className="space-y-3 lg:sticky lg:top-24">
+        {notes.length > 0 && (
+          <Alert
+            tone="neutral"
+            variant="soft"
+            title={notes.length === 1 ? "Note" : "Notes"}
+            icon={
+              <svg aria-hidden="true" viewBox="0 0 16 16" className="size-4 shrink-0">
+                <circle cx="8" cy="8" r="6.25" fill="none" stroke="currentColor" strokeWidth="1.5" />
+                <path d="M8 7.25v3.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                <circle cx="8" cy="5.1" r="0.85" fill="currentColor" />
+              </svg>
+            }
+          >
+            <ul className="space-y-1">
+              {notes.map((note) => (
+                <li key={note}>{note}</li>
+              ))}
+            </ul>
+          </Alert>
+        )}
+        {currency && <SimulationSummary totals={totals} lines={selectedLines} currency={currency} vatIncluded={vatIncluded} />}
+      </div>
+    </div>
   );
 }
 
 function SimulationSummary({
   totals,
+  lines,
   currency,
   vatIncluded,
 }: {
-  totals: ReturnType<typeof simulateTotals>;
+  totals: SimulationTotals;
+  lines: { id: string; label: string; amount: number | null }[];
   currency: string;
   vatIncluded: boolean;
 }) {
@@ -155,26 +185,30 @@ function SimulationSummary({
   return (
     <Card className="p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="font-medium">Simulation</h3>
-        <span className="text-xs text-muted">{vatIncluded ? "incl." : "excl."} VAT</span>
+        <h3 className="font-medium">Potential revenue</h3>
+        <span className="text-xs text-muted">Items {vatIncluded ? "incl." : "excl."} VAT</span>
       </div>
       {totals.selectedCount === 0 ? (
-        <p className="mt-2 text-sm text-muted">Include opportunities above to see the potential proposal total.</p>
+        <p className="mt-2 text-sm text-muted">Include opportunities to see what they could add.</p>
       ) : (
         <dl className="mt-3 space-y-2 text-sm">
-          <div className="flex justify-between gap-6 text-muted">
-            <dt>Current proposal</dt>
-            <dd className="tabular-nums">{money(totals.current)}</dd>
+          {lines.map((line) => (
+            <div key={line.id} className="flex justify-between gap-4">
+              <dt>{line.label}</dt>
+              <dd className="shrink-0 whitespace-nowrap tabular-nums">{money(line.amount)}</dd>
+            </div>
+          ))}
+          <div className="flex justify-between gap-4 border-t border-divider pt-3 text-muted">
+            <dt>Subtotal (excl. VAT)</dt>
+            <dd className="tabular-nums">{money(totals.exclVat)}</dd>
           </div>
-          <div className="flex justify-between gap-6 text-muted">
-            <dt>
-              {totals.selectedCount} selected {totals.selectedCount === 1 ? "opportunity" : "opportunities"}
-            </dt>
-            <dd className="tabular-nums">+ {money(totals.added)}</dd>
+          <div className="flex justify-between gap-4 text-muted">
+            <dt>VAT</dt>
+            <dd className="tabular-nums">{money(totals.vat)}</dd>
           </div>
-          <div className="flex items-baseline justify-between gap-6 border-t border-divider pt-3">
-            <dt className="font-medium text-heading">Potential total</dt>
-            <dd className="text-2xl font-medium tracking-[-0.01em] text-heading tabular-nums">{money(totals.potential)}</dd>
+          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 pt-2 text-base font-semibold text-heading">
+            <dt>Total (incl. VAT)</dt>
+            <dd className="ml-auto tabular-nums">{money(totals.inclVat)}</dd>
           </div>
         </dl>
       )}
@@ -194,15 +228,11 @@ function formatCalculation(uplift: NonNullable<RecommendationView["uplift"]>, qu
 function RecommendationCard({
   recommendation: r,
   choice,
-  alternatives,
-  pricingNote,
   onToggle,
   onChange,
 }: {
   recommendation: RecommendationView;
   choice: Choice;
-  alternatives: string[];
-  pricingNote: string | null;
   onToggle: () => void;
   onChange: (change: Partial<Choice>) => void;
 }) {
@@ -248,10 +278,6 @@ function RecommendationCard({
       </div>
       <p className="mt-3 font-medium text-heading">{title}</p>
       <p className="mt-1 text-sm">{r.explanation}</p>
-      {alternatives.length > 0 && (
-        <p className="mt-2 text-xs text-muted">Alternative to {alternatives.join(" and ")}: only one can be included.</p>
-      )}
-      {pricingNote && <p className="mt-2 text-xs text-muted">{pricingNote}</p>}
       <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         {r.uplift ? (
           <div>
