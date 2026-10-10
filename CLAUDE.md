@@ -111,6 +111,9 @@ step-by-step plan.
 - Use environment variables for all credentials and configuration.
 - Never log sensitive customer information (names, emails, phone numbers, proposal contents).
 - Validate incoming requests.
+- The whole app is behind a shared-password login (`app/login`, `proxy.ts`, `lib/auth/session.ts`,
+  signed session cookie): it spends money and writes to Proposales drafts. Production refuses all
+  requests without `APP_PASSWORD`.
 - Never automatically publish or send proposals.
 - Require explicit user approval before any Proposales API write operation.
 

@@ -591,9 +591,17 @@ upgrade supplement and flexible quantities)
 - Tests: 106 in 10 files; the feedback schema and decisions were covered in Step 7.
 - `vercel.json` pins functions to `fra1`, next to the Neon database.
 - Vercel: the app keys are Production secrets; `DATABASE_URL` comes from the Neon integration.
-  Deployment Protection (Vercel Authentication) is on: anonymous requests are redirected to
-  the login. Every deployment URL keeps serving its own build; the production domain
+  Every deployment URL keeps serving its own build; the production domain
   (https://proposales-technical-case.vercel.app) always points to the latest.
+- **Access:** Vercel Deployment Protection covers only the deployment URLs, not the production
+  domain (found in the final check: the domain was public). So the whole app is behind a
+  shared-password **login page** (`/login`): the password (`APP_PASSWORD`) is compared in
+  constant time with a short pause on a mistake; success sets a signed, `httpOnly` session
+  cookie (HMAC derived from the password, 7 days), and `proxy.ts` checks it on every request
+  (pages redirect to the login and back; server actions get 401). The return path only allows
+  paths inside the app. Without `APP_PASSWORD`, production refuses every request (503) instead
+  of being open; locally the login is skipped. Tested in `lib/auth/session.test.ts`. The login
+  page hides the header with one CSS rule (`body:has([data-hide-header])`).
 - Neon: local development uses a `dev` branch (separate endpoint, verified); production's
   `main` table was cleared once, and the seeded drafts were reset to seed status.
 - Secret scan of the full Git history: no keys or connection strings; only `.env.example` is

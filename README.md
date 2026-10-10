@@ -5,7 +5,8 @@ reviews a proposal against the hotel's real product catalog, suggests up to thre
 opportunities with a deterministic value, and adds the ones the salesperson picks to the
 **draft in Proposales as optional extras** the customer can choose.
 
-**Live:** https://proposales-technical-case.vercel.app (protected with Vercel Authentication)
+**Live:** https://proposales-technical-case.vercel.app (password-protected; credentials are shared
+separately)
 
 ## How it works
 
@@ -101,9 +102,10 @@ runs server-side (`lib/recommendations/`).
   pagination.
 - Opportunities are priced at list price; discounts, availability and seasonality aren't known.
 - Proposals that aren't drafts can't be updated through the API; suggestions are advice there.
-- No user accounts: access is controlled by Vercel Deployment Protection. Each "Find
-  opportunities" is a paid OpenAI call, so the OpenAI project should have a monthly spending
-  limit.
+- No user accounts: one shared password on a login page guards every page and server action
+  (`proxy.ts` checks a signed, `httpOnly` session cookie valid for 7 days), because the app
+  spends money (each "Find opportunities" is a paid OpenAI call, capped by the OpenAI project's
+  spending limit) and writes to Proposales drafts.
 
 ## Run it locally
 
@@ -122,6 +124,7 @@ npm run dev                  # http://localhost:3000
 | `DATABASE_URL` | in production | Neon Postgres for feedback. Locally, use a separate Neon branch (below); without it, development keeps feedback in memory |
 | `OPENAI_MODEL` | no | Defaults to `gpt-5-mini` |
 | `RECOMMENDATIONS_MODE` | no | `mock` returns fake suggestions without calling OpenAI (for UI work); default `live` |
+| `APP_PASSWORD` | in production | Shared password for the login page. Without it, production refuses every request; locally the login is skipped |
 
 Checks: `npm run typecheck`, `npm run lint`, `npm test` (Vitest), `npm run build`.
 
@@ -154,8 +157,8 @@ The script is idempotent and regenerates `data/rate-card.json` with your account
 Vercel, from `main`. Functions run in Frankfurt (`fra1`, `vercel.json`) next to the Neon
 database (branch `main`). Production needs `PROPOSALES_API_KEY`, `OPENAI_API_KEY` and
 `DATABASE_URL` (added by the Neon integration); `RECOMMENDATIONS_MODE` must be unset or
-`live`. Deployment Protection (Vercel Authentication) keeps the app private, and the OpenAI
-project should have a monthly spending limit.
+`live`, and `APP_PASSWORD` must be set. The password covers the production domain; Vercel
+Deployment Protection additionally covers the individual deployment URLs.
 
 Every deployment URL keeps serving the build it was made from; use the production domain
 (https://proposales-technical-case.vercel.app), which always points to the latest.
