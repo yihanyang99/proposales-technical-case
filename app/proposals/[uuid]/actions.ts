@@ -1,7 +1,7 @@
 "use server";
 
 import { z } from "zod";
-import { feedbackInputSchema, feedbackKeySchema, toFeedbackRecord } from "@/lib/feedback/model";
+import { feedbackInputSchema, feedbackKeySchema, toFeedbackRecord, type Decision } from "@/lib/feedback/model";
 import { FeedbackStoreError, getFeedbackStore } from "@/lib/feedback/store";
 import { describeError, isNotFound } from "@/lib/proposales/errors";
 import { generateRecommendations, RecommendationError } from "@/lib/recommendations/engine";
@@ -45,7 +45,14 @@ export type RecommendationView = {
 
 export type RecommendationsState =
   | { status: "idle" }
-  | { status: "done"; runId: string; recommendations: RecommendationView[]; droppedCount: number }
+  | {
+      status: "done";
+      runId: string;
+      recommendations: RecommendationView[];
+      droppedCount: number;
+      /** Earlier decisions by recommendation id. */
+      decisions: Record<string, Decision>;
+    }
   | { status: "error"; message: string };
 
 const inputSchema = z.object({ proposalUuid: z.guid() });
@@ -55,12 +62,13 @@ export async function findOpportunities(_previous: RecommendationsState, formDat
   if (!input.success) return { status: "error", message: "Invalid proposal." };
 
   try {
-    const { proposal, recommendations, droppedCount } = await generateRecommendations(input.data.proposalUuid);
+    const { proposal, recommendations, droppedCount, feedback } = await generateRecommendations(input.data.proposalUuid);
     const incl = proposal.vatIncluded;
     return {
       status: "done",
       runId: crypto.randomUUID(),
       droppedCount,
+      decisions: Object.fromEntries(feedback.map((record) => [record.recommendationId, record.decision])),
       recommendations: recommendations.map((r) => ({
         id: r.id,
         type: r.type,
