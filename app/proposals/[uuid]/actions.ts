@@ -1,6 +1,8 @@
 "use server";
 
 import { z } from "zod";
+import { feedbackInputSchema, feedbackKeySchema, toFeedbackRecord } from "@/lib/feedback/model";
+import { FeedbackStoreError, getFeedbackStore } from "@/lib/feedback/store";
 import { describeError, isNotFound } from "@/lib/proposales/errors";
 import { generateRecommendations, RecommendationError } from "@/lib/recommendations/engine";
 import type { Confidence, RecommendationType } from "@/lib/recommendations/model";
@@ -98,5 +100,38 @@ export async function findOpportunities(_previous: RecommendationsState, formDat
     }
     if (isNotFound(error)) return { status: "error", message: "This proposal no longer exists." };
     return { status: "error", message: describeError(error) };
+  }
+}
+
+export type FeedbackResult = { ok: true } | { ok: false; message: string };
+
+function feedbackError(error: unknown): FeedbackResult {
+  if (error instanceof FeedbackStoreError && error.kind === "not_configured") {
+    return { ok: false, message: "Feedback storage is not configured. Set DATABASE_URL on the server." };
+  }
+  return { ok: false, message: "Your decision could not be saved. Please try again." };
+}
+
+/** Stores an accept or dismiss decision. Input comes from the browser, so it is validated in full. */
+export async function saveFeedback(input: unknown): Promise<FeedbackResult> {
+  const parsed = feedbackInputSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, message: "Invalid feedback." };
+  try {
+    await getFeedbackStore().save(toFeedbackRecord(parsed.data, new Date()));
+    return { ok: true };
+  } catch (error) {
+    return feedbackError(error);
+  }
+}
+
+/** Removes a decision (undo, or an alternative that was accepted instead). */
+export async function clearFeedback(input: unknown): Promise<FeedbackResult> {
+  const parsed = feedbackKeySchema.safeParse(input);
+  if (!parsed.success) return { ok: false, message: "Invalid feedback." };
+  try {
+    await getFeedbackStore().remove(parsed.data.proposalUuid, parsed.data.recommendationId);
+    return { ok: true };
+  } catch (error) {
+    return feedbackError(error);
   }
 }
