@@ -1,6 +1,12 @@
 import { CategoryIcon } from "@/components/category-icon";
 import { Alert, Badge, Card, SectionTitle } from "@/components/ui";
-import { groupByCategory, type CatalogProduct, type ProductPrice } from "@/lib/catalog/model";
+import {
+  groupByCategory,
+  proposalStatusByProduct,
+  type CatalogProduct,
+  type ProductPrice,
+  type ProposalStatus,
+} from "@/lib/catalog/model";
 import type { ProductCategory } from "@/lib/catalog/rate-card";
 import { getCatalog } from "@/lib/catalog/service";
 import { formatMoney, formatPercent } from "@/lib/format";
@@ -23,12 +29,12 @@ function formatUnit(price: ProductPrice): string {
 export async function CatalogSection({
   companyId,
   language,
-  inProposal,
+  lineItems,
 }: {
   companyId: number;
   language: string;
-  /** Variation IDs already used by the proposal's line items. */
-  inProposal: Set<number>;
+  /** The proposal's line items, to show which products are in it and how. */
+  lineItems: { variationId: number | null; title: string; optional: boolean }[];
 }) {
   let products: CatalogProduct[];
   let orphaned: { key: string; title: string }[];
@@ -46,6 +52,7 @@ export async function CatalogSection({
   }
 
   const unpriced = products.filter((p) => !p.price);
+  const status = proposalStatusByProduct(products, lineItems);
   return (
     <section className="space-y-4">
       <SectionTitle className="mb-0">Hotel catalog</SectionTitle>
@@ -69,7 +76,7 @@ export async function CatalogSection({
             </h3>
             <ul className="space-y-3">
               {group.map((product) => (
-                <ProductRow key={product.variationId} product={product} inProposal={inProposal.has(product.variationId)} />
+                <ProductRow key={product.variationId} product={product} status={status.get(product.variationId)} />
               ))}
             </ul>
           </Card>
@@ -82,13 +89,19 @@ export async function CatalogSection({
   );
 }
 
-function ProductRow({ product, inProposal }: { product: CatalogProduct; inProposal: boolean }) {
+const STATUS_LABEL: Record<ProposalStatus, string> = {
+  included: "In proposal",
+  optional: "Optional extra",
+  optional_upgrade: "Optional upgrade",
+};
+
+function ProductRow({ product, status }: { product: CatalogProduct; status: ProposalStatus | undefined }) {
   return (
     <li className="flex items-baseline justify-between gap-4 text-sm">
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-body">{product.title}</p>
-          {inProposal && <Badge tone="strong">In proposal</Badge>}
+          {status && <Badge tone={status === "included" ? "strong" : "neutral"}>{STATUS_LABEL[status]}</Badge>}
         </div>
         {product.price && <p className="mt-0.5 text-xs text-muted">{formatPercent(product.price.vatRate)} VAT</p>}
       </div>

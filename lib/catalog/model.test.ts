@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ContentItem } from "@/lib/proposales/schemas";
-import { groupByCategory, isUpgradeSupplement, joinCatalog, pickLocalized, upgradeSupplementTitle } from "./model";
+import { groupByCategory, isUpgradeSupplement, joinCatalog, pickLocalized, proposalStatusByProduct, upgradeSupplementTitle } from "./model";
 import type { RateCard } from "./rate-card";
 
 const card: RateCard = {
@@ -76,5 +76,27 @@ describe("upgrade supplements", () => {
     expect(isUpgradeSupplement("Upgrade package")).toBe(false);
     const { products } = joinCatalog([item(11, { en: "Room" }), item(12, { en: title })], card, "en");
     expect(products.map((p) => p.title)).toEqual(["Room"]);
+  });
+});
+
+describe("proposalStatusByProduct", () => {
+  const { products } = joinCatalog(
+    [item(11, { en: "Standard Room" }), item(12, { en: "Superior Room" }), item(13, { en: "Coffee Break" }), item(14, { en: "Spa" })],
+    card,
+    "en",
+  );
+  const line = (variationId: number, title: string, optional = false) => ({ variationId, title, optional });
+
+  it("tells included lines, optional extras and offered upgrades apart", () => {
+    const status = proposalStatusByProduct(products, [
+      line(11, "Standard Room"),
+      line(13, "Coffee Break", true),
+      line(90, upgradeSupplementTitle("Standard Room", "Superior Room"), true),
+    ]);
+    expect(Object.fromEntries(status)).toEqual({ 11: "included", 13: "optional", 12: "optional_upgrade" });
+  });
+
+  it("lets an included line win over an optional one of the same product", () => {
+    expect(proposalStatusByProduct(products, [line(13, "Coffee Break", true), line(13, "Coffee Break")]).get(13)).toBe("included");
   });
 });

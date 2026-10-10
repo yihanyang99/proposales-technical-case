@@ -54,6 +54,32 @@ export function isUpgradeSupplement(title: string): boolean {
   return title.startsWith(SUPPLEMENT_PREFIX) && title.includes(" → ");
 }
 
+export type ProposalStatus = "included" | "optional" | "optional_upgrade";
+
+/**
+ * How each catalog product appears in a proposal: included, an optional extra, or offered as an
+ * optional upgrade (through its supplement). Included wins over optional. Absent means not in it.
+ */
+export function proposalStatusByProduct(
+  products: CatalogProduct[],
+  lineItems: { variationId: number | null; title: string; optional: boolean }[],
+): Map<number, ProposalStatus> {
+  const status = new Map<number, ProposalStatus>();
+  for (const line of lineItems) {
+    if (line.variationId === null || isUpgradeSupplement(line.title)) continue;
+    if (!line.optional) status.set(line.variationId, "included");
+    else if (!status.has(line.variationId)) status.set(line.variationId, "optional");
+  }
+  const titles = new Set(lineItems.map((line) => line.title));
+  for (const product of products) {
+    if (status.has(product.variationId)) continue;
+    if (lineItems.some((line) => titles.has(upgradeSupplementTitle(line.title, product.title)))) {
+      status.set(product.variationId, "optional_upgrade");
+    }
+  }
+  return status;
+}
+
 export function joinCatalog(items: ContentItem[], card: RateCard, language: string): Catalog {
   const entries = new Map(card.products.map((entry) => [entry.variation_id, entry]));
   const offered = items.filter((item) => !isUpgradeSupplement(pickLocalized(item.title, language) ?? ""));
