@@ -12,7 +12,7 @@ export function Totals({ rows, note, className }: { rows: TotalsRow[]; note?: Re
     <div className={cn("mx-5 mt-1 flex flex-col gap-3 border-t border-divider pt-4 pb-3 sm:flex-row sm:justify-between", className)}>
       {/* Optional note on the left, e.g. the VAT basis of the prices above. */}
       <p className="text-xs text-muted">{note}</p>
-      <dl className="w-full max-w-sm space-y-2 text-sm sm:ml-auto">
+      <dl className="w-full shrink-0 space-y-2 text-sm whitespace-nowrap sm:ml-auto sm:w-auto sm:min-w-64">
       {rows.map((row, i) => (
         <div
           key={i}

@@ -17,7 +17,7 @@ acceptance criteria, update this file, make one focused commit (with user approv
 | 5 | AI Recommendation Engine | DONE |
 | 6 | Revenue Simulation | DONE |
 | 7 | Recommendation Feedback Loop | DONE |
-| 8 | Dashboard UI | TODO |
+| 8 | Dashboard UI | DONE |
 | 9 | Testing & Vercel Deployment | TODO |
 
 > **Important:** Step 2 was the architecture checkpoint. Steps 2a–9 below have been revised
@@ -534,7 +534,19 @@ upgrade supplement and flexible quantities)
 
 **Expected commit:** `feat: build revenue copilot dashboard`
 
-**Status:** TODO
+**Notes:**
+- Most of the journey was built in Steps 3–7; this step reviewed it end to end and closed the
+  gaps: the line items show only what is included, so their total matches Proposales' own total
+  (which excludes unpicked extras), and an **Optional extras** table of the same width and
+  style beside them lists what the customer can pick, with its own Subtotal / VAT / Total
+  (`sumLineItems`). The VAT rate is a small line under each item name instead of a column, as in
+  the catalog and the side cards. Also: an
+  **Open in Proposales** link to the editor in the proposal header; a notice up front when a
+  proposal isn't a draft (suggestions stay available as advice); a styled `not-found.tsx`; and a
+  one-line intro on the proposal list. Both tables use a fixed layout with the same column widths
+  and top-aligned rows; the totals block sizes to its content.
+
+**Status:** DONE
 
 ---
 
@@ -556,7 +568,8 @@ upgrade supplement and flexible quantities)
   the Vercel function region to Frankfurt (`fra1`), next to the database.
 - Deploy and smoke-test the end-to-end flow.
 - Update `README.md` with setup instructions, architecture overview, decisions, limitations
-  and the deployed URL.
+  (e.g. list prices come from the app rate card because the catalog API has no prices) and the
+  deployed URL.
 
 **Dependencies:** Steps 1–8.
 
@@ -601,3 +614,6 @@ upgrade supplement and flexible quantities)
   Proposales as optional extras (upgrades as a supplement at the difference), existing items
   never change. Feedback (added / not a fit with a reason) is stored in Postgres on Neon and
   feeds the next prompt.
+- Step 8: Reviewed the full journey and closed the gaps (included items and optional extras
+  side by side with their own totals, VAT under item names, editor link, non-draft notice, 404
+  page, list intro).

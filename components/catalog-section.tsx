@@ -83,7 +83,7 @@ export async function CatalogSection({
         ))}
       </div>
       <p className="text-xs text-muted">
-        List prices exclude VAT and come from the app rate card, because the Proposales API does not expose catalog prices.
+        List prices exclude VAT.
       </p>
     </section>
   );

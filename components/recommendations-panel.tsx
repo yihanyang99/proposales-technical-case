@@ -96,6 +96,11 @@ export function RecommendationsPanel({ proposalUuid, isDraft, currency, vatInclu
           </Button>
         </form>
       </div>
+      {!isDraft && (
+        <p className="text-sm text-muted">
+          This proposal isn&apos;t a draft, so suggestions are advice only. Create a new version in Proposales to add them.
+        </p>
+      )}
 
       {pending ? (
         <EmptyState>
@@ -412,31 +417,30 @@ function ProposalUpdate({
             </div>
           </dl>
 
-          {!isDraft ? (
-            <p className="mt-4 text-xs text-muted">Only draft proposals can be updated. Create a new version in Proposales first.</p>
-          ) : confirming ? (
-            <div className="mt-4 space-y-3 border-t border-divider pt-4 text-sm">
-              <div>
-                <p className="font-medium text-heading">
-                  Add {items.length} optional {items.length === 1 ? "extra" : "extras"} to the draft?
-                </p>
-                <p className="mt-0.5 text-xs text-muted">Nothing is sent to the customer.</p>
+          {isDraft &&
+            (confirming ? (
+              <div className="mt-4 space-y-3 border-t border-divider pt-4 text-sm">
+                <div>
+                  <p className="font-medium text-heading">
+                    Add {items.length} optional {items.length === 1 ? "extra" : "extras"} to the draft?
+                  </p>
+                  <p className="mt-0.5 text-xs text-muted">Nothing is sent to the customer.</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" onClick={confirm} disabled={busy}>
+                    {busy && <Spinner />}
+                    Confirm
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setConfirming(false)} disabled={busy}>
+                    Cancel
+                  </Button>
+                </div>
               </div>
-              <div className="flex flex-wrap gap-2">
-                <Button size="sm" onClick={confirm} disabled={busy}>
-                  {busy && <Spinner />}
-                  Confirm
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => setConfirming(false)} disabled={busy}>
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <Button size="sm" className="mt-4 w-full" onClick={() => setConfirming(true)}>
-              Update draft in Proposales
-            </Button>
-          )}
+            ) : (
+              <Button size="sm" className="mt-4 w-full" onClick={() => setConfirming(true)}>
+                Update draft in Proposales
+              </Button>
+            ))}
           {error && (
             <p role="alert" className="mt-3 text-xs text-failure">
               {error}

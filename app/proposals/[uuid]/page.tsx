@@ -6,6 +6,7 @@ import { RecommendationsPanel } from "@/components/recommendations-panel";
 import { StatusBadge } from "@/components/status-badge";
 import {
   Alert,
+  buttonStyles,
   EmptyState,
   Page,
   PageHeader,
@@ -18,9 +19,11 @@ import {
   Totals,
   type TotalsRow,
 } from "@/components/ui";
+import { cn } from "@/lib/cn";
 import { formatMoney, formatPercent } from "@/lib/format";
 import { describeError, isNotFound } from "@/lib/proposales/errors";
-import type { ProposalDetail } from "@/lib/proposals/model";
+import { proposalEditorUrl } from "@/lib/proposales/links";
+import { sumLineItems, type LineItem, type ProposalDetail } from "@/lib/proposals/model";
 import { getProposalDetail } from "@/lib/proposals/service";
 
 export default function ProposalPage({ params }: PageProps<"/proposals/[uuid]">) {
@@ -57,7 +60,22 @@ async function ProposalView({ params }: { params: PageProps<"/proposals/[uuid]">
     <article className="mt-6 space-y-10">
       <PageHeader
         title={proposal.title}
-        aside={<StatusBadge status={proposal.status} />}
+        aside={
+          <>
+            <StatusBadge status={proposal.status} />
+            <a
+              href={proposalEditorUrl(proposal.uuid)}
+              target="_blank"
+              rel="noreferrer"
+              className={cn(buttonStyles({ variant: "soft", size: "sm" }), "ml-auto")}
+            >
+              Open in Proposales
+              <svg aria-hidden="true" viewBox="0 0 16 16" className="-mr-1 size-3.5">
+                <path d="M6 4h6v6M12 4l-7.5 7.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </a>
+          </>
+        }
         description={
           <>
             <p><EventSummary event={proposal.event} /></p>
@@ -91,58 +109,101 @@ function LineItemsTable({ proposal }: { proposal: ProposalDetail }) {
   }
 
   // Line prices follow the proposal's own VAT basis; the summary always breaks VAT out.
-  const inclVat = proposal.vatIncluded;
-  return (
+  const basis = `Unit prices and amounts ${proposal.vatIncluded ? "include" : "exclude"} VAT.`;
+  const included = proposal.lineItems.filter((item) => !item.optional);
+  const optional = proposal.lineItems.filter((item) => item.optional);
+  const lineItems = (
     <section>
       <SectionTitle>Line items</SectionTitle>
-      <Table
-        footer={
-          <Totals
-            note={`Unit prices and amounts ${inclVat ? "include" : "exclude"} VAT.`}
-            rows={totalsRows(proposal)}
-          />
-        }
-      >
-        <TableHead>
-          <tr>
-            <TableHeaderCell>Item</TableHeaderCell>
-            <TableHeaderCell align="right">VAT</TableHeaderCell>
-            <TableHeaderCell align="right">Qty</TableHeaderCell>
-            <TableHeaderCell align="right">Unit price</TableHeaderCell>
-            <TableHeaderCell align="right">Amount</TableHeaderCell>
-          </tr>
-        </TableHead>
-        <tbody>
-          {proposal.lineItems.map((item) => (
-            <tr key={item.id}>
-              <TableCell className="font-medium text-heading">
-                {item.title}
-                {item.kind === "package" && <span className="ml-2 text-xs font-normal text-muted">(package)</span>}
-                {item.optional && <span className="ml-2 text-xs font-normal text-muted">(optional)</span>}
-              </TableCell>
-              <TableCell numeric>{formatPercent(item.vatRate)}</TableCell>
-              <TableCell numeric>{item.quantity ?? "–"}</TableCell>
-              <TableCell numeric>
-                {formatMoney(inclVat ? item.unitPriceInclVat : item.unitPriceExclVat, item.currency)}
-              </TableCell>
-              <TableCell numeric>{formatMoney(inclVat ? item.totalInclVat : item.totalExclVat, item.currency)}</TableCell>
-            </tr>
-          ))}
-        </tbody>
-      </Table>
+      {included.length === 0 ? (
+        <EmptyState>No items are included yet; the customer can only pick optional extras.</EmptyState>
+      ) : (
+        <ItemsTable
+          items={included}
+          vatIncluded={proposal.vatIncluded}
+          note={basis}
+          totals={{ exclVat: proposal.totalExclVat, inclVat: proposal.totalInclVat }}
+          currency={proposal.currency}
+        />
+      )}
     </section>
+  );
+  if (optional.length === 0) return lineItems;
+
+  return (
+    <div className="grid gap-10 lg:grid-cols-2 lg:gap-3">
+      {lineItems}
+      <section>
+        <SectionTitle>Optional extras</SectionTitle>
+        <ItemsTable
+          items={optional}
+          vatIncluded={proposal.vatIncluded}
+          note="Total if the customer picks them all."
+          totals={sumLineItems(optional)}
+          currency={proposal.currency}
+        />
+      </section>
+    </div>
+  );
+}
+
+function ItemsTable({
+  items,
+  vatIncluded,
+  note,
+  totals,
+  currency,
+}: {
+  items: LineItem[];
+  vatIncluded: boolean;
+  note: string;
+  totals: { exclVat: number | null; inclVat: number | null };
+  currency: string | null;
+}) {
+  return (
+    // Fixed layout, so both tables share the same column widths whatever their content; long names wrap.
+    <Table className="table-fixed" footer={<Totals note={note} rows={totalsRows({ ...totals, currency })} />}>
+      <colgroup>
+        <col />
+        <col className="w-20" />
+        <col className="w-28" />
+        <col className="w-32" />
+      </colgroup>
+      <TableHead>
+        <tr>
+          <TableHeaderCell>Item</TableHeaderCell>
+          <TableHeaderCell align="right" className="whitespace-nowrap">Qty</TableHeaderCell>
+          <TableHeaderCell align="right" className="whitespace-nowrap">Unit price</TableHeaderCell>
+          <TableHeaderCell align="right" className="whitespace-nowrap">Amount</TableHeaderCell>
+        </tr>
+      </TableHead>
+      <tbody>
+        {items.map((item) => (
+          <tr key={item.id} className="align-top">
+            <TableCell>
+              <span className="font-medium text-heading">{item.title}</span>
+              {item.kind === "package" && <span className="ml-2 text-xs text-muted">(package)</span>}
+              {item.vatRate !== null && <span className="mt-0.5 block text-xs text-muted">{formatPercent(item.vatRate)} VAT</span>}
+            </TableCell>
+            <TableCell numeric>{item.quantity ?? "–"}</TableCell>
+            <TableCell numeric>{formatMoney(vatIncluded ? item.unitPriceInclVat : item.unitPriceExclVat, item.currency)}</TableCell>
+            <TableCell numeric>{formatMoney(vatIncluded ? item.totalInclVat : item.totalExclVat, item.currency)}</TableCell>
+          </tr>
+        ))}
+      </tbody>
+    </Table>
   );
 }
 
 /** Subtotal / VAT / Total from the API totals. VAT is derived only when both totals exist. */
-function totalsRows({ totalExclVat, totalInclVat, currency }: ProposalDetail): TotalsRow[] {
-  if (totalExclVat === null || totalInclVat === null) {
-    return [{ label: "Total", value: formatMoney(totalInclVat ?? totalExclVat, currency), emphasis: true }];
+function totalsRows({ exclVat, inclVat, currency }: { exclVat: number | null; inclVat: number | null; currency: string | null }): TotalsRow[] {
+  if (exclVat === null || inclVat === null) {
+    return [{ label: "Total", value: formatMoney(inclVat ?? exclVat, currency), emphasis: true }];
   }
   return [
-    { label: "Subtotal (excl. VAT)", value: formatMoney(totalExclVat, currency) },
-    { label: "VAT", value: formatMoney(totalInclVat - totalExclVat, currency) },
-    { label: "Total (incl. VAT)", value: formatMoney(totalInclVat, currency), emphasis: true },
+    { label: "Subtotal (excl. VAT)", value: formatMoney(exclVat, currency) },
+    { label: "VAT", value: formatMoney(inclVat - exclVat, currency) },
+    { label: "Total (incl. VAT)", value: formatMoney(inclVat, currency), emphasis: true },
   ];
 }
 
