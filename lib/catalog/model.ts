@@ -54,22 +54,26 @@ export function isUpgradeSupplement(title: string): boolean {
   return title.startsWith(SUPPLEMENT_PREFIX) && title.includes(" → ");
 }
 
-export type ProposalStatus = "included" | "optional" | "optional_upgrade";
+export type ProposalStatus = "included" | "included_with_extension" | "optional" | "optional_upgrade";
 
 /**
- * How each catalog product appears in a proposal: included, an optional extra, or offered as an
- * optional upgrade (through its supplement). Included wins over optional. Absent means not in it.
+ * How each catalog product appears in a proposal: included, included with an optional extension
+ * (e.g. extra nights), an optional extra, or offered as an optional upgrade (through its
+ * supplement). Absent means not in it.
  */
 export function proposalStatusByProduct(
   products: CatalogProduct[],
   lineItems: { variationId: number | null; title: string; optional: boolean }[],
 ): Map<number, ProposalStatus> {
-  const status = new Map<number, ProposalStatus>();
+  const included = new Set<number>();
+  const optional = new Set<number>();
   for (const line of lineItems) {
     if (line.variationId === null || isUpgradeSupplement(line.title)) continue;
-    if (!line.optional) status.set(line.variationId, "included");
-    else if (!status.has(line.variationId)) status.set(line.variationId, "optional");
+    (line.optional ? optional : included).add(line.variationId);
   }
+  const status = new Map<number, ProposalStatus>();
+  for (const id of included) status.set(id, optional.has(id) ? "included_with_extension" : "included");
+  for (const id of optional) if (!included.has(id)) status.set(id, "optional");
   const titles = new Set(lineItems.map((line) => line.title));
   for (const product of products) {
     if (status.has(product.variationId)) continue;

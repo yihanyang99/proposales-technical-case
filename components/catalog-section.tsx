@@ -91,6 +91,7 @@ export async function CatalogSection({
 
 const STATUS_LABEL: Record<ProposalStatus, string> = {
   included: "In proposal",
+  included_with_extension: "In proposal · extension offered",
   optional: "Optional extra",
   optional_upgrade: "Optional upgrade",
 };
@@ -101,7 +102,7 @@ function ProductRow({ product, status }: { product: CatalogProduct; status: Prop
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-body">{product.title}</p>
-          {status && <Badge tone={status === "included" ? "strong" : "neutral"}>{STATUS_LABEL[status]}</Badge>}
+          {status && <Badge tone={status === "included" || status === "included_with_extension" ? "strong" : "neutral"}>{STATUS_LABEL[status]}</Badge>}
         </div>
         {product.price && <p className="mt-0.5 text-xs text-muted">{formatPercent(product.price.vatRate)} VAT</p>}
       </div>

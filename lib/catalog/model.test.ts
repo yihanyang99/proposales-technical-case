@@ -96,7 +96,9 @@ describe("proposalStatusByProduct", () => {
     expect(Object.fromEntries(status)).toEqual({ 11: "included", 13: "optional", 12: "optional_upgrade" });
   });
 
-  it("lets an included line win over an optional one of the same product", () => {
-    expect(proposalStatusByProduct(products, [line(13, "Coffee Break", true), line(13, "Coffee Break")]).get(13)).toBe("included");
+  it("marks an included product with an optional block of itself as extended", () => {
+    expect(proposalStatusByProduct(products, [line(11, "Standard Room", true), line(11, "Standard Room")]).get(11)).toBe(
+      "included_with_extension",
+    );
   });
 });

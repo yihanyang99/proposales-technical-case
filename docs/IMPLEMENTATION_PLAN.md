@@ -502,7 +502,8 @@ structured feedback, and update the draft in Proposales.
   Afterwards the cards show "In proposal", the line items reload, and **Open proposal** links
   to the Proposales editor (`lib/proposales/links.ts`).
 - The hotel catalog shows each product's status in the proposal: **In proposal** (included),
-  **Optional extra**, or **Optional upgrade** (offered through its supplement).
+  **In proposal · extension offered**, **Optional extra**, or **Optional upgrade** (offered
+  through its supplement).
 - The only Proposales writes live in `lib/proposals/draft-service.ts`.
 - Tests: feedback schema and decisions, prompt context without comments, in-memory store, draft
   planner (pricing, supplements, refusals, block list), supplement filter, catalog status,
