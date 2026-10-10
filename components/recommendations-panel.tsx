@@ -4,7 +4,6 @@ import { useActionState, useState } from "react";
 import { findOpportunities, type RecommendationsState, type RecommendationView } from "@/app/proposals/[uuid]/actions";
 import { Alert, Badge, Button, Card, EmptyState, LevelBars, QuantityInput, SectionTitle, Spinner } from "@/components/ui";
 import { formatMoney, formatPercent } from "@/lib/format";
-import { describeExtension } from "@/lib/recommendations/model";
 import { MIN_QUANTITY, opportunityAmount, simulateTotals, toggleSelection, type SimulationTotals } from "@/lib/revenue/simulation";
 
 const TYPE_LABEL: Record<RecommendationView["type"], string> = {
@@ -120,6 +119,7 @@ function OpportunityList({
     return {
       id: r.id,
       label: shortTitle(r),
+      vatRate: r.uplift?.vatRate ?? null,
       selected,
       amount: r.uplift ? opportunityAmount(r.uplift, quantity) : null,
       exclVat: r.uplift ? opportunityAmount(r.uplift.exclVat, quantity) : null,
@@ -177,7 +177,7 @@ function SimulationSummary({
   vatIncluded,
 }: {
   totals: SimulationTotals;
-  lines: { id: string; label: string; amount: number | null }[];
+  lines: { id: string; label: string; vatRate: number | null; amount: number | null }[];
   currency: string;
   vatIncluded: boolean;
 }) {
@@ -194,7 +194,10 @@ function SimulationSummary({
         <dl className="mt-3 space-y-2 text-sm">
           {lines.map((line) => (
             <div key={line.id} className="flex justify-between gap-4">
-              <dt>{line.label}</dt>
+              <dt>
+                {line.label}
+                {line.vatRate !== null && <span className="block text-xs text-muted">{formatPercent(line.vatRate)} VAT</span>}
+              </dt>
               <dd className="shrink-0 whitespace-nowrap tabular-nums">{money(line.amount)}</dd>
             </div>
           ))}
@@ -216,13 +219,19 @@ function SimulationSummary({
   );
 }
 
-function formatCalculation(uplift: NonNullable<RecommendationView["uplift"]>, quantity: number, unit: string | null): string {
+/** "20 rooms × 1 night × €145.00" with the AI's verified breakdown, else "21 × €145.00 / night". */
+function formatCalculation(
+  uplift: NonNullable<RecommendationView["uplift"]>,
+  quantity: number,
+  unit: string | null,
+  breakdown: string | null,
+): string {
   const money = (minor: number) => formatMoney(minor, uplift.currency);
   const price =
     uplift.replacedUnitPrice === null
       ? money(uplift.unitPrice)
       : `(${money(uplift.unitPrice)} − ${money(uplift.replacedUnitPrice)})`;
-  return `${quantity} × ${price}${unit ? ` / ${unit}` : ""}`;
+  return breakdown ? `${breakdown} × ${price}` : `${quantity} × ${price}${unit ? ` / ${unit}` : ""}`;
 }
 
 function RecommendationCard({
@@ -244,7 +253,7 @@ function RecommendationCard({
       ? `Add ${r.productTitle}`
       : r.type === "upgrade"
         ? `Upgrade ${r.lineItemTitle ?? "current item"} to ${r.productTitle}`
-        : `Extend ${r.productTitle} ${describeExtension(quantity, r.unit, edited ? null : r.quantityLabel)}`;
+        : `Extend ${r.productTitle}`;
 
   return (
     <Card className="p-5">
@@ -281,14 +290,13 @@ function RecommendationCard({
       <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         {r.uplift ? (
           <div>
-            <p className="text-sm text-body tabular-nums">{formatCalculation(r.uplift, quantity, r.unit)}</p>
+            <p className="text-sm text-body tabular-nums">{formatCalculation(r.uplift, quantity, r.unit, edited ? null : r.quantityLabel)}</p>
             <p className="mt-1 flex flex-wrap items-baseline gap-x-2">
               <span className="text-4xl font-medium tracking-[-0.02em] text-heading tabular-nums">
                 {formatMoney(opportunityAmount(r.uplift, quantity), r.uplift.currency)}
               </span>
               <span className="text-sm text-muted">
-                {r.uplift.vatIncluded ? "incl." : "excl."}
-                {r.uplift.vatRate !== null ? ` ${formatPercent(r.uplift.vatRate)}` : ""} VAT
+                {r.uplift.vatIncluded ? "incl." : "excl."} VAT
               </span>
             </p>
           </div>
@@ -312,7 +320,7 @@ function RecommendationCard({
               label={`quantity for ${r.productTitle}`}
             />
           </div>
-          {edited ? (
+          {edited && (
             <button
               type="button"
               onClick={() => onChange({ quantity: r.quantity })}
@@ -324,8 +332,6 @@ function RecommendationCard({
                 <path d="M3 8a5 5 0 1 0 1.5-3.6M3 3v2.5h2.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
-          ) : (
-            <p className="text-xs text-muted">Suggested: {suggestion}</p>
           )}
         </div>
       </div>

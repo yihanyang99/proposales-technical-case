@@ -23,7 +23,7 @@ export function mockModelOutput(proposal: ProposalDetail, catalog: CatalogProduc
       lineItemId: null,
       quantity,
       quantityRationale: crossSell.price.unit === "person" ? `${guests} guests` : "1 unit",
-      explanation: `Mock suggestion: ${crossSell.title} complements this event and is not in the proposal yet.`,
+      explanation: "Mock suggestion: complements this event and is not in the proposal yet.",
       confidence: "high",
       conflictsWith: [],
     });
@@ -42,7 +42,7 @@ export function mockModelOutput(proposal: ProposalDetail, catalog: CatalogProduc
         lineItemId: line.id,
         quantity: line.quantity ?? 1,
         quantityRationale: `${line.quantity ?? 1} rooms`,
-        explanation: `Mock suggestion: upgrade ${line.title} to ${better.title} for a better guest experience.`,
+        explanation: "Mock suggestion: a better guest experience for a small step up in price.",
         confidence: "medium",
         conflictsWith: [],
       });
@@ -65,7 +65,7 @@ export function mockModelOutput(proposal: ProposalDetail, catalog: CatalogProduc
         const unit = byVariation.get(extendable.variationId)?.price?.unit;
         return unit === "night" ? `${extra} rooms × 1 night` : `${extra} ${extra === 1 ? "day" : "days"}`;
       })(),
-      explanation: `Mock suggestion: extend ${extendable.title} so guests can arrive the evening before.`,
+      explanation: "Mock suggestion: lets guests arrive the evening before.",
       confidence: "low",
       conflictsWith: [],
     });

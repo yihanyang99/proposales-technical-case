@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { CatalogProduct } from "@/lib/catalog/model";
 import type { LineItem } from "@/lib/proposals/model";
-import { describeExtension, quantityLabel, validateRecommendations, type ModelOutput } from "./model";
+import { quantityLabel, validateRecommendations, type ModelOutput } from "./model";
 
 const priced = (variationId: number, title: string, category: CatalogProduct["category"], unitPrice: number): CatalogProduct => ({
   productId: variationId + 1000,
@@ -168,26 +168,5 @@ describe("quantityLabel", () => {
     ["", 5],
   ])("rejects %j for %i", (expression, quantity) => {
     expect(quantityLabel(expression, quantity)).toBeNull();
-  });
-});
-
-describe("describeExtension", () => {
-  it("spells out rooms × nights for room-night quantities", () => {
-    expect(describeExtension(20, "night", "20 rooms × 1 night")).toBe("by 1 night for 20 rooms");
-    expect(describeExtension(40, "night", "20 rooms × 2 nights")).toBe("by 2 nights for 20 rooms");
-    expect(describeExtension(1, "night", "1 room × 1 night")).toBe("by 1 night for 1 room");
-  });
-
-  it("uses a single matching term for day-priced items", () => {
-    expect(describeExtension(1, "day", "1 day")).toBe("by 1 day");
-    expect(describeExtension(2, "day", "2 days")).toBe("by 2 days");
-  });
-
-  it("falls back to plain units without a usable breakdown", () => {
-    expect(describeExtension(20, "night", null)).toBe("(20 room-nights)");
-    expect(describeExtension(1, "night", null)).toBe("(1 room-night)");
-    expect(describeExtension(20, "night", "20 rooms")).toBe("(20 room-nights)");
-    expect(describeExtension(3, "day", null)).toBe("by 3 days");
-    expect(describeExtension(5, "person", "5 guests")).toBe("(5 × person)");
   });
 });

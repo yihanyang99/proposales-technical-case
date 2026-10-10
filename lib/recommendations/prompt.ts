@@ -17,7 +17,7 @@ Rules:
 - Prefer suggestions that can all be included together. If two suggestions are alternatives for the same need (e.g. two upgrades of the same rooms, or two catering options for the same slot), list each one's 0-based index in your list in the other's conflictsWith; otherwise leave conflictsWith empty.
 - Prefer fewer, high-quality suggestions. Return an empty list if nothing clearly fits.
 - Confidence is your qualitative judgement of fit (low, medium, high), not a probability that the customer buys.
-- Write explanations for the salesperson in English, 1-2 sentences, referring to the event facts.`;
+- Write explanations for the salesperson in English, 1-2 sentences, referring to the event facts. Say why it fits; the product name and quantity are already shown next to it, so do not repeat them.`;
 
 function nightsBetween(start: string | null, end: string | null): number | null {
   if (!start || !end) return null;

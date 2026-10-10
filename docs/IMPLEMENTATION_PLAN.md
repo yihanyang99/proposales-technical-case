@@ -389,7 +389,7 @@ deterministically calculate the potential additional revenue for each one and fo
 **Dependencies:** Steps 4 and 5.
 
 **Acceptance criteria:**
-- [x] Calculations are pure and deterministic, and the unit tests pass (Vitest: 70 tests
+- [x] Calculations are pure and deterministic, and the unit tests pass (Vitest: 67 tests
   in 6 files; a deliberate bug in the total makes them fail).
 - [x] Currencies and VAT bases are never mixed (`calculateUplift` returns null on a currency
   mismatch; values and totals use the proposal's VAT basis).
@@ -404,15 +404,16 @@ deterministically calculate the potential additional revenue for each one and fo
   opportunities without a value are never counted).
 - Each card has an **Include** toggle and a **quantity stepper** (`QuantityInput`, a new UI
   component). The calculation line, value and running total update live. Quantity limits:
-  1–10,000, and an upgrade can't exceed the booked units. The calculation always shows the plain
-  number. The AI's reasoning appears under the stepper as "Suggested: 80 guests", which stays
-  visible after an edit and resets the quantity when clicked. Nothing is selected by default.
-- Titles: Add / Upgrade / Extend + item. An extension spells out its verified breakdown
-  ("Extend Standard Double Room by 1 night for 20 rooms") via `describeExtension`. After an edit,
-  or without a breakdown, it falls back to plain units ("(21 room-nights)"). The prompt asks for
-  "N rooms × M nights" breakdowns.
+  1–10,000, and an upgrade can't exceed the booked units. Nothing is selected by default.
+- Each fact appears once. Titles say what (Add / Upgrade … to … / Extend + item). The calculation
+  line shows the AI's verified breakdown ("20 rooms × 1 night × €145.00"; the prompt asks for
+  "N rooms × M nights" breakdowns) and falls back to plain units after an edit
+  ("21 × €145.00 / night"). Only after an edit, "Suggested: 20 rooms × 1 night" appears under the
+  stepper and resets the quantity when clicked. The prompt asks explanations to say why it fits
+  without repeating the product or quantity. The card shows "excl. VAT"; the rate is listed per
+  opportunity in the Potential revenue card.
 - A **Potential revenue** card (beside the opportunities and sticky on large screens, below them on
-  smaller ones) lists only the included opportunities, by name, on the
+  smaller ones) lists only the included opportunities, by name with their VAT rate, on the
   proposal's VAT basis, then their subtotal excl. VAT, VAT and total incl. VAT
   (`simulateTotals`, from the server's prices on both bases, so rounding matches the cards).
   Each new "Find again" run resets the selection.
@@ -545,3 +546,4 @@ deterministically calculate the potential additional revenue for each one and fo
   can't be included together, and an extension notes when it is priced below an included upgrade.
 - Step 6: The Potential revenue card sits beside the opportunities and lists only the selected
   ones, with subtotal, VAT and total incl. VAT.
+- Step 6: Opportunity cards show each fact once.
