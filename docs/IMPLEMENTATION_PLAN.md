@@ -18,7 +18,7 @@ acceptance criteria, update this file, make one focused commit (with user approv
 | 6 | Revenue Simulation | DONE |
 | 7 | Recommendation Feedback Loop | DONE |
 | 8 | Dashboard UI | DONE |
-| 9 | Testing & Vercel Deployment | TODO |
+| 9 | Testing & Vercel Deployment | IN REVIEW |
 
 > **Important:** Step 2 was the architecture checkpoint. Steps 2a–9 below have been revised
 > to match the real API (see "Checkpoint outcome" under Step 2 and `docs/API_FINDINGS.md`).
@@ -587,7 +587,21 @@ upgrade supplement and flexible quantities)
 **Expected commit:** `test: add critical logic tests and deployment docs` (split into
 `test:` and `docs:` only if the changes are clearly separate)
 
-**Status:** TODO
+**Notes:**
+- Tests: 106 in 10 files; the feedback schema and decisions were covered in Step 7.
+- `vercel.json` pins functions to `fra1`, next to the Neon database.
+- Vercel: the app keys are Production secrets; `DATABASE_URL` comes from the Neon integration.
+  Deployment Protection (Vercel Authentication) is on: anonymous requests are redirected to
+  the login. Every deployment URL keeps serving its own build; the production domain
+  (https://proposales-technical-case.vercel.app) always points to the latest.
+- Neon: local development uses a `dev` branch (separate endpoint, verified); production's
+  `main` table was cleared once, and the seeded drafts were reset to seed status.
+- Secret scan of the full Git history: no keys or connection strings; only `.env.example` is
+  tracked.
+- README rewritten: journey, architecture, decisions, limitations (rate card), local setup,
+  environment variables, deployment and future improvements.
+
+**Status:** IN REVIEW
 
 ---
 
