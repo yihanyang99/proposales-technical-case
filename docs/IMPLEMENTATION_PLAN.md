@@ -17,7 +17,7 @@ acceptance criteria, update this file, make one focused commit (with user approv
 | 5 | AI Recommendation Engine | DONE |
 | 6 | Revenue Simulation | DONE |
 | 7 | Recommendation Feedback Loop | DONE |
-| 8 | Dashboard UI | IN REVIEW |
+| 8 | Dashboard UI | DONE |
 | 9 | Testing & Vercel Deployment | TODO |
 
 > **Important:** Step 2 was the architecture checkpoint. Steps 2a–9 below have been revised
@@ -551,7 +551,7 @@ upgrade supplement and flexible quantities)
   Both tables use a fixed layout with the same column widths
   and top-aligned rows; the totals block sizes to its content.
 
-**Status:** IN REVIEW
+**Status:** DONE
 
 ---
 
@@ -622,3 +622,5 @@ upgrade supplement and flexible quantities)
 - Step 8: Reviewed the full journey and closed the gaps (included items and optional extras
   side by side with their own totals, VAT under item names, editor link, non-draft notice, 404
   page, list intro).
+- Step 8: The hotel catalog is collapsed by default, with search and multi-select category
+  filters, since it is mostly the AI's input.
