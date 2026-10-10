@@ -1,10 +1,40 @@
 "use client";
 
-import { useActionState, useState } from "react";
-import { findOpportunities, type RecommendationsState, type RecommendationView } from "@/app/proposals/[uuid]/actions";
-import { Alert, Badge, Button, Card, EmptyState, LevelBars, QuantityInput, SectionTitle, Spinner } from "@/components/ui";
+import { useActionState, useRef, useState } from "react";
+import {
+  clearFeedback,
+  findOpportunities,
+  saveFeedback,
+  type FeedbackResult,
+  type RecommendationsState,
+  type RecommendationView,
+} from "@/app/proposals/[uuid]/actions";
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  ChoiceChip,
+  ChoiceGroup,
+  EmptyState,
+  FieldLabel,
+  Input,
+  LevelBars,
+  QuantityInput,
+  SectionTitle,
+  Spinner,
+} from "@/components/ui";
 import { formatMoney, formatPercent } from "@/lib/format";
-import { MIN_QUANTITY, opportunityAmount, simulateTotals, toggleSelection, type SimulationTotals } from "@/lib/revenue/simulation";
+import {
+  acceptChoice,
+  DISMISS_REASON_LABEL,
+  DISMISS_REASONS,
+  initialChoice,
+  MAX_COMMENT_LENGTH,
+  type Choice,
+  type DismissReason,
+} from "@/lib/feedback/model";
+import { MIN_QUANTITY, opportunityAmount, simulateTotals, type SimulationTotals } from "@/lib/revenue/simulation";
 
 const TYPE_LABEL: Record<RecommendationView["type"], string> = {
   cross_sell: "Cross-sell",
@@ -19,6 +49,14 @@ const FIT_LABEL: Record<RecommendationView["confidence"], string> = {
   medium: "Good fit",
   high: "Strong fit",
 };
+
+function fullTitle(r: RecommendationView): string {
+  return r.type === "cross_sell"
+    ? `Add ${r.productTitle}`
+    : r.type === "upgrade"
+      ? `Upgrade ${r.lineItemTitle ?? "current item"} to ${r.productTitle}`
+      : `Extend ${r.productTitle}`;
+}
 
 function shortTitle(r: RecommendationView): string {
   return r.type === "cross_sell" ? `Add ${r.productTitle}` : r.type === "upgrade" ? `Upgrade to ${r.productTitle}` : `Extend ${r.productTitle}`;
@@ -70,7 +108,9 @@ export function RecommendationsPanel({ proposalUuid, currency, vatIncluded }: Pa
       ) : (
         <OpportunityList
           key={state.runId}
+          proposalUuid={proposalUuid}
           recommendations={state.recommendations}
+          decisions={state.decisions}
           currency={currency}
           vatIncluded={vatIncluded}
         />
@@ -79,69 +119,158 @@ export function RecommendationsPanel({ proposalUuid, currency, vatIncluded }: Pa
       {!pending && state.status === "done" && (
         <p className="text-xs text-muted">
           Suggested by AI from this proposal and the hotel catalog. Values are potential revenue at list price. Review
-          before adding.
+          before adding. Your choices are saved and inform the next suggestions for this proposal.
         </p>
       )}
     </section>
   );
 }
 
-type Choice = { selected: boolean; quantity: number };
-
 function OpportunityList({
+  proposalUuid,
   recommendations,
+  decisions,
   currency,
   vatIncluded,
-}: { recommendations: RecommendationView[] } & Omit<PanelProps, "proposalUuid">) {
+}: {
+  recommendations: RecommendationView[];
+  decisions: Extract<RecommendationsState, { status: "done" }>["decisions"];
+} & PanelProps) {
   const [choices, setChoices] = useState<Record<string, Choice>>(() =>
-    Object.fromEntries(recommendations.map((r) => [r.id, { selected: false, quantity: r.quantity }])),
+    Object.fromEntries(recommendations.map((r) => [r.id, initialChoice(r.quantity, r.maxQuantity, decisions[r.id])])),
   );
-  const update = (id: string, change: Partial<Choice>) =>
-    setChoices((current) => ({ ...current, [id]: { ...current[id], ...change } }));
-  const toggle = (r: RecommendationView) => setChoices((current) => toggleSelection(current, r.id, r.conflictsWith));
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const queues = useRef<Record<string, Promise<void>>>({});
+
+  const byId = new Map(recommendations.map((r) => [r.id, r]));
+
+  const send = async (r: RecommendationView, choice: Choice) => {
+    const key = { proposalUuid, recommendationId: r.id };
+    let result: FeedbackResult;
+    try {
+      result =
+        choice.status === "pending"
+          ? await clearFeedback(key)
+          : await saveFeedback({
+              ...key,
+              type: r.type,
+              productId: r.productId,
+              suggestedQuantity: r.quantity,
+              confidence: r.confidence,
+              decision:
+                choice.status === "accepted"
+                  ? { status: "accepted", quantity: choice.quantity }
+                  : { status: "dismissed", reason: choice.reason, comment: choice.comment },
+            });
+    } catch {
+      result = { ok: false, message: "Your choice could not be saved. Please try again." };
+    }
+    setErrors((current) => {
+      const next = { ...current };
+      if (result.ok) delete next[r.id];
+      else next[r.id] = result.message;
+      return next;
+    });
+  };
+
+  /**
+   * Saves (or, for pending, clears) one choice and shows an error on its card if that fails.
+   * Saves for the same suggestion run one after another, so the last click always wins.
+   */
+  const persist = (r: RecommendationView, choice: Choice) => {
+    queues.current[r.id] = (queues.current[r.id] ?? Promise.resolve()).then(() => send(r, choice));
+    return queues.current[r.id];
+  };
+
+  const change = (r: RecommendationView, choice: Choice) => {
+    setChoices((current) => ({ ...current, [r.id]: choice }));
+    void persist(r, choice);
+  };
+
+  const accept = (r: RecommendationView) => {
+    const { choices: next, reopened } = acceptChoice(choices, r.id, r.conflictsWith);
+    setChoices(next);
+    void persist(r, next[r.id]);
+    for (const id of reopened) {
+      const other = byId.get(id);
+      if (other) void persist(other, next[id]);
+    }
+  };
+
+  const reopen = (r: RecommendationView) => change(r, { status: "pending", quantity: choices[r.id].quantity, dismissing: false });
+
+  const setDismissing = (r: RecommendationView, dismissing: boolean) =>
+    setChoices((current) => ({ ...current, [r.id]: { status: "pending", quantity: current[r.id].quantity, dismissing } }));
+
+  const setQuantity = (r: RecommendationView, quantity: number) => {
+    const choice = { ...choices[r.id], quantity };
+    if (choice.status === "accepted") change(r, choice);
+    else setChoices((current) => ({ ...current, [r.id]: choice }));
+  };
+
+  const isAccepted = (id: string) => choices[id]?.status === "accepted";
 
   const notes: string[] = [];
   recommendations.forEach((r, index) => {
     for (const other of recommendations.slice(index + 1)) {
       if (r.conflictsWith.includes(other.id)) {
-        notes.push(`${shortTitle(r)} and ${shortTitle(other)} are alternatives: only one can be included.`);
+        notes.push(`${shortTitle(r)} and ${shortTitle(other)} are alternatives: only one can be added.`);
       }
     }
   });
   for (const r of recommendations) {
-    if (r.type !== "extension" || !choices[r.id].selected) continue;
-    const upgrade = recommendations.find((o) => o.type === "upgrade" && o.lineItemId === r.lineItemId && choices[o.id].selected);
+    if (r.type !== "extension" || !isAccepted(r.id)) continue;
+    const upgrade = recommendations.find((o) => o.type === "upgrade" && o.lineItemId === r.lineItemId && isAccepted(o.id));
     if (upgrade) notes.push(`${shortTitle(r)} is priced at the ${r.productTitle} rate, not the upgraded ${upgrade.productTitle}.`);
   }
 
-  const lines = recommendations.map((r) => {
-    const { quantity, selected } = choices[r.id];
+  const toUpdate = recommendations.filter((r) => isAccepted(r.id));
+  const lines = toUpdate.map((r) => {
+    const { quantity } = choices[r.id];
     return {
       id: r.id,
       label: shortTitle(r),
       vatRate: r.uplift?.vatRate ?? null,
-      selected,
+      selected: true,
       amount: r.uplift ? opportunityAmount(r.uplift, quantity) : null,
       exclVat: r.uplift ? opportunityAmount(r.uplift.exclVat, quantity) : null,
       inclVat: r.uplift ? opportunityAmount(r.uplift.inclVat, quantity) : null,
     };
   });
   const totals = simulateTotals(lines);
-  const selectedLines = lines.filter((line) => line.selected && line.amount !== null);
 
   return (
     <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
       <ul className="space-y-3">
-        {recommendations.map((recommendation) => (
-          <li key={recommendation.id}>
-            <RecommendationCard
-              recommendation={recommendation}
-              choice={choices[recommendation.id]}
-              onToggle={() => toggle(recommendation)}
-              onChange={(change) => update(recommendation.id, change)}
-            />
-          </li>
-        ))}
+        {recommendations.map((r) => {
+          const choice = choices[r.id];
+          return (
+            <li key={r.id}>
+              {choice.status === "dismissed" ? (
+                <DismissedCard
+                  recommendation={r}
+                  choice={choice}
+                  error={errors[r.id]}
+                  onUndo={() => reopen(r)}
+                  onRetry={() => void persist(r, choice)}
+                />
+              ) : (
+                <RecommendationCard
+                  recommendation={r}
+                  choice={choice}
+                  error={errors[r.id]}
+                  onAccept={() => accept(r)}
+                  onUndo={() => reopen(r)}
+                  onStartDismiss={() => setDismissing(r, true)}
+                  onCancelDismiss={() => setDismissing(r, false)}
+                  onDismiss={(reason, comment) => change(r, { status: "dismissed", quantity: choice.quantity, reason, comment })}
+                  onQuantity={(quantity) => setQuantity(r, quantity)}
+                  onRetry={() => void persist(r, choice)}
+                />
+              )}
+            </li>
+          );
+        })}
       </ul>
       <div className="space-y-3 lg:sticky lg:top-24">
         {notes.length > 0 && (
@@ -164,7 +293,9 @@ function OpportunityList({
             </ul>
           </Alert>
         )}
-        {currency && <SimulationSummary totals={totals} lines={selectedLines} currency={currency} vatIncluded={vatIncluded} />}
+        {currency && (
+          <SimulationSummary totals={totals} lines={lines.filter((line) => line.amount !== null)} currency={currency} vatIncluded={vatIncluded} />
+        )}
       </div>
     </div>
   );
@@ -189,7 +320,7 @@ function SimulationSummary({
         <span className="text-xs text-muted">Items {vatIncluded ? "incl." : "excl."} VAT</span>
       </div>
       {totals.selectedCount === 0 ? (
-        <p className="mt-2 text-sm text-muted">Include opportunities to see what they could add.</p>
+        <p className="mt-2 text-sm text-muted">Add opportunities to see what they could add.</p>
       ) : (
         <dl className="mt-3 space-y-2 text-sm">
           {lines.map((line) => (
@@ -234,26 +365,140 @@ function formatCalculation(
   return breakdown ? `${breakdown} × ${price}` : `${quantity} × ${price}${unit ? ` / ${unit}` : ""}`;
 }
 
+function SaveError({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <p role="alert" className="mt-3 flex flex-wrap items-center gap-x-2 text-xs text-failure">
+      {message}
+      <button type="button" onClick={onRetry} className="font-medium underline underline-offset-2 hover:text-heading">
+        Retry
+      </button>
+    </p>
+  );
+}
+
+function DismissedCard({
+  recommendation: r,
+  choice,
+  error,
+  onUndo,
+  onRetry,
+}: {
+  recommendation: RecommendationView;
+  choice: Extract<Choice, { status: "dismissed" }>;
+  error: string | undefined;
+  onUndo: () => void;
+  onRetry: () => void;
+}) {
+  return (
+    <Card className="p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="font-medium text-heading">{fullTitle(r)}</p>
+          <p className="mt-0.5 text-xs text-muted">
+            Not a fit: {DISMISS_REASON_LABEL[choice.reason]}
+            {choice.comment && ` · ${choice.comment}`}
+          </p>
+        </div>
+        <Button size="sm" variant="soft" onClick={onUndo}>
+          Undo
+        </Button>
+      </div>
+      {error && <SaveError message={error} onRetry={onRetry} />}
+    </Card>
+  );
+}
+
+function DismissForm({ id, onDismiss, onCancel }: { id: string; onDismiss: (reason: DismissReason, comment: string | null) => void; onCancel: () => void }) {
+  const [reason, setReason] = useState<DismissReason | null>(null);
+  // "Other" chosen for the salesperson because they typed their own reason; undone if they clear it.
+  const [autoOther, setAutoOther] = useState(false);
+  const [comment, setComment] = useState("");
+  const updateComment = (value: string) => {
+    setComment(value);
+    if (value.trim() && !reason) {
+      setReason("other");
+      setAutoOther(true);
+    } else if (!value.trim() && autoOther) {
+      setReason(null);
+      setAutoOther(false);
+    }
+  };
+  return (
+    <form
+      className="mt-5 space-y-4"
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (reason) onDismiss(reason, comment.trim() || null);
+      }}
+    >
+      <ChoiceGroup legend="What makes it a poor fit? It helps the AI suggest better next time.">
+        {DISMISS_REASONS.map((value) => (
+          <ChoiceChip
+            key={value}
+            name={`reason-${id}`}
+            value={value}
+            checked={reason === value}
+            onChange={() => {
+              setReason(value);
+              setAutoOther(false);
+            }}
+          >
+            {DISMISS_REASON_LABEL[value]}
+          </ChoiceChip>
+        ))}
+      </ChoiceGroup>
+      <div>
+        <FieldLabel htmlFor={`comment-${id}`}>Your own reason or a comment (optional)</FieldLabel>
+        <Input
+          id={`comment-${id}`}
+          variant="soft"
+          value={comment}
+          maxLength={MAX_COMMENT_LENGTH}
+          onChange={(event) => updateComment(event.target.value)}
+          placeholder={reason && !autoOther ? "Add a comment (optional)" : "Or write your own reason"}
+        />
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button type="submit" size="sm" disabled={!reason}>
+          Save
+        </Button>
+        <Button size="sm" variant="ghost" onClick={onCancel}>
+          Keep suggestion
+        </Button>
+        {!reason && <p className="text-xs text-muted">Choose a reason or write your own.</p>}
+      </div>
+    </form>
+  );
+}
+
 function RecommendationCard({
   recommendation: r,
   choice,
-  onToggle,
-  onChange,
+  error,
+  onAccept,
+  onUndo,
+  onStartDismiss,
+  onCancelDismiss,
+  onDismiss,
+  onQuantity,
+  onRetry,
 }: {
   recommendation: RecommendationView;
-  choice: Choice;
-  onToggle: () => void;
-  onChange: (change: Partial<Choice>) => void;
+  choice: Exclude<Choice, { status: "dismissed" }>;
+  error: string | undefined;
+  onAccept: () => void;
+  onUndo: () => void;
+  onStartDismiss: () => void;
+  onCancelDismiss: () => void;
+  onDismiss: (reason: DismissReason, comment: string | null) => void;
+  onQuantity: (quantity: number) => void;
+  onRetry: () => void;
 }) {
-  const { quantity, selected } = choice;
+  const { quantity } = choice;
+  const accepted = choice.status === "accepted";
+  const dismissing = choice.status === "pending" && choice.dismissing;
   const suggestion = r.quantityLabel ?? `${r.quantity}${r.unit ? ` ${r.unit}` : ""}`;
   const edited = quantity !== r.quantity;
-  const title =
-    r.type === "cross_sell"
-      ? `Add ${r.productTitle}`
-      : r.type === "upgrade"
-        ? `Upgrade ${r.lineItemTitle ?? "current item"} to ${r.productTitle}`
-        : `Extend ${r.productTitle}`;
 
   return (
     <Card className="p-5">
@@ -265,27 +510,36 @@ function RecommendationCard({
             {FIT_LABEL[r.confidence]}
           </span>
         </div>
-        <Button
-          size="sm"
-          variant={selected ? "primary" : "soft"}
-          aria-pressed={selected}
-          disabled={!r.uplift}
-          onClick={onToggle}
-        >
-          <svg aria-hidden="true" viewBox="0 0 16 16" className="-ml-1 size-4">
-            <path
-              d={selected ? "M3.5 8.5l3 3 6-7" : "M8 3.5v9M3.5 8h9"}
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          {selected ? "Included" : "Include"}
-        </Button>
+        {!dismissing && (
+          <div className="flex items-center gap-2">
+            {!accepted && (
+              <Button size="sm" variant="ghost" onClick={onStartDismiss}>
+                Not a fit
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant={accepted ? "primary" : "soft"}
+              aria-pressed={accepted}
+              aria-label={accepted ? "Added, select to remove" : undefined}
+              onClick={accepted ? onUndo : onAccept}
+            >
+              <svg aria-hidden="true" viewBox="0 0 16 16" className="-ml-1 size-4">
+                <path
+                  d={accepted ? "M3.5 8.5l3 3 6-7" : "M8 3.5v9M3.5 8h9"}
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              {accepted ? "Added" : "Add to proposal"}
+            </Button>
+          </div>
+        )}
       </div>
-      <p className="mt-3 font-medium text-heading">{title}</p>
+      <p className="mt-3 font-medium text-heading">{fullTitle(r)}</p>
       <p className="mt-1 text-sm">{r.explanation}</p>
       <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         {r.uplift ? (
@@ -316,14 +570,14 @@ function RecommendationCard({
               value={quantity}
               min={MIN_QUANTITY}
               max={r.maxQuantity}
-              onChange={(value) => onChange({ quantity: value })}
+              onChange={onQuantity}
               label={`quantity for ${r.productTitle}`}
             />
           </div>
           {edited && (
             <button
               type="button"
-              onClick={() => onChange({ quantity: r.quantity })}
+              onClick={() => onQuantity(r.quantity)}
               className="inline-flex items-center gap-1 rounded-full text-xs text-muted transition-colors hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               aria-label={`Reset quantity to the suggested ${suggestion}`}
             >
@@ -335,6 +589,8 @@ function RecommendationCard({
           )}
         </div>
       </div>
+      {dismissing && <DismissForm id={r.id} onDismiss={onDismiss} onCancel={onCancelDismiss} />}
+      {error && <SaveError message={error} onRetry={onRetry} />}
     </Card>
   );
 }

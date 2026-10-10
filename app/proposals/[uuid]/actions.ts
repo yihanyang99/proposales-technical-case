@@ -11,6 +11,8 @@ import { MAX_QUANTITY, type PricedOpportunity } from "@/lib/revenue/simulation";
 export type RecommendationView = {
   id: string;
   type: RecommendationType;
+  /** Catalog variation id of the suggested product. */
+  productId: number;
   productTitle: string;
   productDescription: string | null;
   /** Line item being upgraded or extended. */
@@ -72,6 +74,7 @@ export async function findOpportunities(_previous: RecommendationsState, formDat
       recommendations: recommendations.map((r) => ({
         id: r.id,
         type: r.type,
+        productId: r.product.variationId,
         productTitle: r.product.title,
         productDescription: r.product.description,
         lineItemId: r.lineItem?.id ?? null,

@@ -29,19 +29,3 @@ export function simulateTotals(lines: SimulationLine[]): SimulationTotals {
   const inclVat = counted.reduce((sum, line) => sum + line.inclVat, 0);
   return { selectedCount: counted.length, exclVat, vat: inclVat - exclVat, inclVat };
 }
-
-/** Includes or removes one opportunity; including it removes its alternatives. */
-export function toggleSelection<T extends { selected: boolean }>(
-  choices: Record<string, T>,
-  id: string,
-  conflictsWith: string[],
-): Record<string, T> {
-  const selected = !choices[id].selected;
-  const next = { ...choices, [id]: { ...choices[id], selected } };
-  if (selected) {
-    for (const other of conflictsWith) {
-      if (next[other]) next[other] = { ...next[other], selected: false };
-    }
-  }
-  return next;
-}
