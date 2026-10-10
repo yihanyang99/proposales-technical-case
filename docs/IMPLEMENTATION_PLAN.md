@@ -546,4 +546,4 @@ deterministically calculate the potential additional revenue for each one and fo
   can't be included together, and an extension notes when it is priced below an included upgrade.
 - Step 6: The Potential revenue card sits beside the opportunities and lists only the selected
   ones, with subtotal, VAT and total incl. VAT.
-- Step 6: Opportunity cards show each fact once.
+- Step 6: Opportunity cards show each fact once; the page is wider to fit the side column.

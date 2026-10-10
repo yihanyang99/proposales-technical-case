@@ -7,7 +7,7 @@ import { BrandMark } from "@/components/brand-mark";
  */
 export function SiteHeader() {
   return (
-    <header className="sticky top-0 z-10 mx-auto w-full max-w-5xl px-4 pt-4 sm:px-6">
+    <header className="sticky top-0 z-10 mx-auto w-full max-w-6xl px-4 pt-4 sm:px-6">
       <div className="flex h-16 items-center rounded-xl bg-surface-glass px-5 backdrop-blur-xl backdrop-saturate-150">
         <Link href="/" className="flex items-center gap-2.5 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
           <BrandMark />

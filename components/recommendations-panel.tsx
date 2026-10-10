@@ -130,7 +130,7 @@ function OpportunityList({
   const selectedLines = lines.filter((line) => line.selected && line.amount !== null);
 
   return (
-    <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
+    <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
       <ul className="space-y-3">
         {recommendations.map((recommendation) => (
           <li key={recommendation.id}>
