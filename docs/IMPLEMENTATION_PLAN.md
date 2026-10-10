@@ -18,7 +18,7 @@ acceptance criteria, update this file, make one focused commit (with user approv
 | 6 | Revenue Simulation | DONE |
 | 7 | Recommendation Feedback Loop | DONE |
 | 8 | Dashboard UI | DONE |
-| 9 | Testing & Vercel Deployment | IN REVIEW |
+| 9 | Testing & Vercel Deployment | DONE |
 
 > **Important:** Step 2 was the architecture checkpoint. Steps 2a–9 below have been revised
 > to match the real API (see "Checkpoint outcome" under Step 2 and `docs/API_FINDINGS.md`).
@@ -609,7 +609,10 @@ upgrade supplement and flexible quantities)
 - README rewritten: journey, architecture, decisions, limitations (rate card), local setup,
   environment variables, deployment and future improvements.
 
-**Status:** IN REVIEW
+- Verified on production after the merge: functions run in `fra1`; anonymous requests to pages
+  are redirected to `/login` and server actions get 401.
+
+**Status:** DONE
 
 ---
 
@@ -646,3 +649,6 @@ upgrade supplement and flexible quantities)
   page, list intro).
 - Step 8: The hotel catalog is collapsed by default, with search and multi-select category
   filters, since it is mostly the AI's input.
+- Step 9: Functions pinned to `fra1`, final README, Neon `dev` branch for local work. The final
+  check found the production domain public (Deployment Protection covers only deployment URLs),
+  so the app got a shared-password login.
