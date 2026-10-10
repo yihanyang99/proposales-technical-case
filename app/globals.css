@@ -76,3 +76,8 @@ h3 {
   color: var(--text-heading);
   letter-spacing: -0.01em;
 }
+
+/* The login page has no header (its only link would lead back to the login). */
+body:has([data-hide-header]) [data-site-header] {
+  display: none;
+}
