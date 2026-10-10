@@ -1,11 +1,11 @@
 import { z } from "zod";
 import type { CatalogProduct } from "@/lib/catalog/model";
 import type { LineItem } from "@/lib/proposals/model";
+import { MAX_QUANTITY } from "@/lib/revenue/simulation";
 
 export const RECOMMENDATION_TYPES = ["cross_sell", "upgrade", "extension"] as const;
 export const CONFIDENCE_LEVELS = ["low", "medium", "high"] as const;
 export const MAX_RECOMMENDATIONS = 3;
-const MAX_QUANTITY = 10_000;
 
 export type RecommendationType = (typeof RECOMMENDATION_TYPES)[number];
 export type Confidence = (typeof CONFIDENCE_LEVELS)[number];
@@ -34,6 +34,9 @@ export const modelOutputSchema = z.object({
         .describe("The quantity as a compact multiplication of event facts that equals `quantity`, e.g. '80 guests × 2 days' or '40 rooms'"),
       explanation: z.string().describe("1-2 sentences for the salesperson: why this fits this event"),
       confidence: z.enum(CONFIDENCE_LEVELS).describe("Qualitative fit, not a probability of conversion"),
+      conflictsWith: z
+        .array(z.number())
+        .describe("0-based indices of other suggestions in this list that are alternatives to this one (only one of them would be included); empty if it combines with all others"),
     }),
   ),
 });
@@ -51,6 +54,8 @@ export type Recommendation = {
   quantityLabel: string | null;
   explanation: string;
   confidence: Confidence;
+  /** Ids of other recommendations that can't be included together with this one. */
+  conflictsWith: string[];
 };
 
 export type DropReason =
@@ -85,6 +90,8 @@ export function quantityLabel(expression: string, quantity: number): string | nu
 /**
  * Deterministic guardrails on model output. Keeps only suggestions that reference real catalog
  * products and line items, are internally consistent, and are not duplicates; caps at three.
+ * Conflicts combine the model's judgement with structural rules (two upgrades of the same line
+ * item, or an upgrade and a cross-sell of the same product) and are always symmetric.
  */
 export function validateRecommendations(
   output: ModelOutput,
@@ -97,6 +104,7 @@ export function validateRecommendations(
   const recommendations: Recommendation[] = [];
   const dropped: { index: number; reason: DropReason }[] = [];
   const seen = new Set<string>();
+  const idByIndex = new Map<number, string>();
 
   output.recommendations.forEach((raw, index) => {
     const drop = (reason: DropReason) => dropped.push({ index, reason });
@@ -141,8 +149,10 @@ export function validateRecommendations(
     if (recommendations.length >= MAX_RECOMMENDATIONS) return drop("over_limit");
     seen.add(key);
 
+    const id = `${raw.type}:${key}`;
+    idByIndex.set(index, id);
     recommendations.push({
-      id: `${raw.type}:${key}`,
+      id,
       type: raw.type,
       product,
       lineItem,
@@ -150,8 +160,34 @@ export function validateRecommendations(
       quantityLabel: quantityLabel(raw.quantityRationale, quantity),
       explanation: explanation.slice(0, 600),
       confidence: raw.confidence,
+      conflictsWith: [],
     });
   });
 
-  return { recommendations, dropped };
+  const conflicts = new Map(recommendations.map((r) => [r.id, new Set<string>()]));
+  const link = (a: string, b: string) => {
+    if (a === b) return;
+    conflicts.get(a)?.add(b);
+    conflicts.get(b)?.add(a);
+  };
+  output.recommendations.forEach((raw, index) => {
+    const id = idByIndex.get(index);
+    if (!id) return;
+    for (const other of raw.conflictsWith) {
+      const otherId = idByIndex.get(other);
+      if (otherId) link(id, otherId);
+    }
+  });
+  for (const a of recommendations) {
+    for (const b of recommendations) {
+      const sameLineUpgrades = a.type === "upgrade" && b.type === "upgrade" && a.lineItem?.id === b.lineItem?.id;
+      const upgradeAndAdd = a.type === "upgrade" && b.type === "cross_sell" && a.product.variationId === b.product.variationId;
+      if (sameLineUpgrades || upgradeAndAdd) link(a.id, b.id);
+    }
+  }
+
+  return {
+    recommendations: recommendations.map((r) => ({ ...r, conflictsWith: [...(conflicts.get(r.id) ?? [])] })),
+    dropped,
+  };
 }

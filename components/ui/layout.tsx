@@ -3,7 +3,7 @@ import { cn } from "@/lib/cn";
 
 /** Page container: shared width, gutters and vertical rhythm. */
 export function Page({ children, className }: { children: ReactNode; className?: string }) {
-  return <main className={cn("mx-auto w-full max-w-5xl flex-1 px-4 pt-8 pb-16 sm:px-6", className)}>{children}</main>;
+  return <main className={cn("mx-auto w-full max-w-6xl flex-1 px-4 pt-8 pb-16 sm:px-6", className)}>{children}</main>;
 }
 
 /** Page title block with optional description and trailing content (e.g. a status badge). */

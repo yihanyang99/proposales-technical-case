@@ -68,7 +68,11 @@ async function ProposalView({ params }: { params: PageProps<"/proposals/[uuid]">
         }
       />
       <LineItemsTable proposal={proposal} />
-      <RecommendationsPanel proposalUuid={proposal.uuid} />
+      <RecommendationsPanel
+        proposalUuid={proposal.uuid}
+        currency={proposal.currency}
+        vatIncluded={proposal.vatIncluded}
+      />
       <Suspense fallback={<Skeleton className="h-72" />}>
         <CatalogSection
           companyId={proposal.companyId}
@@ -101,9 +105,9 @@ function LineItemsTable({ proposal }: { proposal: ProposalDetail }) {
         <TableHead>
           <tr>
             <TableHeaderCell>Item</TableHeaderCell>
+            <TableHeaderCell align="right">VAT</TableHeaderCell>
             <TableHeaderCell align="right">Qty</TableHeaderCell>
             <TableHeaderCell align="right">Unit price</TableHeaderCell>
-            <TableHeaderCell align="right">VAT</TableHeaderCell>
             <TableHeaderCell align="right">Amount</TableHeaderCell>
           </tr>
         </TableHead>
@@ -115,11 +119,11 @@ function LineItemsTable({ proposal }: { proposal: ProposalDetail }) {
                 {item.kind === "package" && <span className="ml-2 text-xs font-normal text-muted">(package)</span>}
                 {item.optional && <span className="ml-2 text-xs font-normal text-muted">(optional)</span>}
               </TableCell>
+              <TableCell numeric>{formatPercent(item.vatRate)}</TableCell>
               <TableCell numeric>{item.quantity ?? "–"}</TableCell>
               <TableCell numeric>
                 {formatMoney(inclVat ? item.unitPriceInclVat : item.unitPriceExclVat, item.currency)}
               </TableCell>
-              <TableCell numeric>{formatPercent(item.vatRate)}</TableCell>
               <TableCell numeric>{formatMoney(inclVat ? item.totalInclVat : item.totalExclVat, item.currency)}</TableCell>
             </tr>
           ))}

@@ -54,7 +54,8 @@ step-by-step plan.
   model (pure normalization) and the server-only service that the pages call.
 - `lib/recommendations/`: model output schema, deterministic validation, prompt, mock mode and
   the server-only engine (OpenAI through the Vercel AI SDK; `gpt-5-mini` by default). The model
-  never supplies prices. `lib/revenue/`: pure revenue math in integer cents.
+  never supplies prices. `lib/revenue/`: pure revenue math in integer cents (`uplift.ts` per
+  opportunity, `simulation.ts` for edited quantities and totals; safe to use in the browser).
 - `RECOMMENDATIONS_MODE=mock` avoids OpenAI calls during UI work. Never run live AI calls
   without need; each costs money.
 - `lib/catalog/`: rate card schema, pure catalog join (content library + rate card, matched on
@@ -63,15 +64,16 @@ step-by-step plan.
 - Pages read `params`/`searchParams` and fetch data inside `<Suspense>`. Handle expected API
   errors inline (production hides error messages in `error.tsx`).
 - Read server secrets through `getServerEnv()` in `lib/env.ts` (Zod-validated, `server-only`).
-- Checks: `npm run typecheck`, `npm run lint`, `npm run build`. Dev server: `npm run dev`.
+- Checks: `npm run typecheck`, `npm run lint`, `npm test` (Vitest), `npm run build`. Dev server: `npm run dev`.
+- Tests sit next to the code as `*.test.ts`. Add tests for any new money, validation or parsing logic.
 - Test data: `npm run seed` (dry run). `--apply` writes to Proposales and needs explicit approval for each run.
 
 ## UI Library
 
 - Reusable UI lives in `components/ui/` (import from `@/components/ui`): `Button`/`buttonStyles`,
   `Input`, `FieldLabel`, `Card`/`cardStyles`, `Chip`/`ChipGroup`, `Badge`, `Dot`, `Alert`,
-  `EmptyState`, `Skeleton`, `Page`, `PageHeader`, `SectionTitle`, `Table*` primitives, `Totals`, `Spinner`, `LevelBars`
-  and `LocalDate` (timestamps in the viewer's time zone; never format timestamps in UTC on the server).
+  `EmptyState`, `Skeleton`, `Page`, `PageHeader`, `SectionTitle`, `Table*` primitives, `Totals`, `Spinner`, `LevelBars`,
+  `QuantityInput` and `LocalDate` (timestamps in the viewer's time zone; never format timestamps in UTC on the server).
 - Prefer chips (pill links or choices) over a native `<select>`: the open menu of a native select
   cannot be styled and looks browser-default.
 - Pages and feature components compose these. Do not hand-style buttons, fields, cards, badges or

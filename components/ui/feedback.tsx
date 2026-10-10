@@ -2,25 +2,29 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { Dot, type Tone } from "./badge";
 
-/** Inline message card for errors and notices. */
+/** Inline message for errors and notices. `icon` replaces the tone dot; `soft` sets it apart from cards. */
 export function Alert({
   tone = "failure",
   title,
+  icon,
+  variant = "card",
   children,
   className,
 }: {
   tone?: Tone;
   title: string;
+  icon?: ReactNode;
+  variant?: "card" | "soft";
   children?: ReactNode;
   className?: string;
 }) {
   return (
-    <div role={tone === "failure" ? "alert" : "status"} className={cn("rounded-xl bg-surface-2 p-5 text-sm", className)}>
+    <div role={tone === "failure" ? "alert" : "status"} className={cn("rounded-xl p-5 text-sm", variant === "soft" ? "bg-badge" : "bg-surface-2", className)}>
       <p className="flex items-center gap-2 font-medium text-heading">
-        <Dot tone={tone} />
+        {icon ?? <Dot tone={tone} />}
         {title}
       </p>
-      {children && <div className="mt-1 text-muted">{children}</div>}
+      {children && <div className={cn("mt-1", variant === "soft" ? "text-body" : "text-muted")}>{children}</div>}
     </div>
   );
 }

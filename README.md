@@ -5,7 +5,8 @@ An AI-powered revenue optimization assistant for hotel sales teams using
 
 > **Status:** In development. You can open real Proposales proposals, see the hotel's priced
 > catalog, and ask the AI for up to three revenue opportunities, each with a deterministic value.
-> Quantity editing, totals and accept/dismiss feedback are not built yet.
+> You can include opportunities, adjust their quantities and see the potential proposal total.
+> Accept/dismiss feedback is not built yet.
 
 ## What it is
 
@@ -44,7 +45,8 @@ them, and leaves the salesperson in control.
 | 3 — Proposal Retrieval & Selection | DONE |
 | 4 — Product Catalog Integration | DONE |
 | 5 — AI Recommendation Engine | DONE |
-| 6–9 — Revenue simulation, feedback, dashboard, deployment | TODO |
+| 6 — Revenue Simulation | DONE |
+| 7–9 — Feedback, dashboard, deployment | TODO |
 
 See the implementation plan for details.
 
@@ -58,7 +60,7 @@ cp .env.example .env.local   # then fill in PROPOSALES_API_KEY and OPENAI_API_KE
 npm run dev                  # http://localhost:3000
 ```
 
-Checks: `npm run typecheck`, `npm run lint`, `npm run build`.
+Checks: `npm run typecheck`, `npm run lint`, `npm test` (Vitest), `npm run build`.
 
 Set `RECOMMENDATIONS_MODE=mock` in `.env.local` to use fake suggestions without calling OpenAI.
 

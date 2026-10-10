@@ -4,6 +4,7 @@ import { z } from "zod";
 import { describeError, isNotFound } from "@/lib/proposales/errors";
 import { generateRecommendations, RecommendationError } from "@/lib/recommendations/engine";
 import type { Confidence, RecommendationType } from "@/lib/recommendations/model";
+import { MAX_QUANTITY, type PricedOpportunity } from "@/lib/revenue/simulation";
 
 export type RecommendationView = {
   id: string;
@@ -11,12 +12,17 @@ export type RecommendationView = {
   productTitle: string;
   productDescription: string | null;
   /** Line item being upgraded or extended. */
+  lineItemId: string | null;
   lineItemTitle: string | null;
   quantity: number;
+  /** Highest quantity the salesperson may set (an upgrade can't exceed the booked units). */
+  maxQuantity: number;
   unit: string | null;
   quantityLabel: string | null;
   explanation: string;
   confidence: Confidence;
+  /** Ids of alternatives that can't be included together with this one. */
+  conflictsWith: string[];
   /**
    * Potential additional revenue (minor units) and the numbers it was calculated from, on the
    * proposal's own VAT basis (like its line items).
@@ -29,12 +35,15 @@ export type RecommendationView = {
     unitPrice: number;
     replacedUnitPrice: number | null;
     vatRate: number | null;
+    /** The same prices on both VAT bases, for the simulation's VAT breakdown. */
+    exclVat: PricedOpportunity;
+    inclVat: PricedOpportunity;
   } | null;
 };
 
 export type RecommendationsState =
   | { status: "idle" }
-  | { status: "done"; recommendations: RecommendationView[]; droppedCount: number }
+  | { status: "done"; runId: string; recommendations: RecommendationView[]; droppedCount: number }
   | { status: "error"; message: string };
 
 const inputSchema = z.object({ proposalUuid: z.guid() });
@@ -48,18 +57,22 @@ export async function findOpportunities(_previous: RecommendationsState, formDat
     const incl = proposal.vatIncluded;
     return {
       status: "done",
+      runId: crypto.randomUUID(),
       droppedCount,
       recommendations: recommendations.map((r) => ({
         id: r.id,
         type: r.type,
         productTitle: r.product.title,
         productDescription: r.product.description,
+        lineItemId: r.lineItem?.id ?? null,
         lineItemTitle: r.lineItem?.title ?? null,
         quantity: r.quantity,
+        maxQuantity: r.type === "upgrade" ? (r.lineItem?.quantity ?? r.quantity) : MAX_QUANTITY,
         unit: r.product.price?.unit ?? null,
         quantityLabel: r.quantityLabel,
         explanation: r.explanation,
         confidence: r.confidence,
+        conflictsWith: r.conflictsWith,
         uplift: r.uplift && {
           amount: incl ? r.uplift.amountInclVat : r.uplift.amountExclVat,
           vatIncluded: incl,
@@ -68,6 +81,8 @@ export async function findOpportunities(_previous: RecommendationsState, formDat
           unitPrice: incl ? r.uplift.unitPriceInclVat : r.uplift.unitPriceExclVat,
           replacedUnitPrice: incl ? r.uplift.replacedUnitPriceInclVat : r.uplift.replacedUnitPriceExclVat,
           vatRate: r.uplift.vatRate,
+          exclVat: { unitPrice: r.uplift.unitPriceExclVat, replacedUnitPrice: r.uplift.replacedUnitPriceExclVat },
+          inclVat: { unitPrice: r.uplift.unitPriceInclVat, replacedUnitPrice: r.uplift.replacedUnitPriceInclVat },
         },
       })),
     };

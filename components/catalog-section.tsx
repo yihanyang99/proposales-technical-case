@@ -84,24 +84,24 @@ export async function CatalogSection({
 
 function ProductRow({ product, inProposal }: { product: CatalogProduct; inProposal: boolean }) {
   return (
-    <li className="flex items-start justify-between gap-4 text-sm">
-      <div className="flex min-w-0 flex-wrap items-center gap-2">
-        <p className="text-body">{product.title}</p>
-        {inProposal && <Badge tone="strong">In proposal</Badge>}
+    <li className="flex items-baseline justify-between gap-4 text-sm">
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-body">{product.title}</p>
+          {inProposal && <Badge tone="strong">In proposal</Badge>}
+        </div>
+        {product.price && <p className="mt-0.5 text-xs text-muted">{formatPercent(product.price.vatRate)} VAT</p>}
       </div>
-      <div className="shrink-0 text-right">
+      <p className="shrink-0 whitespace-nowrap text-right tabular-nums">
         {product.price ? (
           <>
-            <p className="tabular-nums">
-              <span className="font-medium text-heading">{formatMoney(product.price.unitPriceExclVat, product.price.currency)}</span>{" "}
-              <span className="text-muted">{formatUnit(product.price)}</span>
-            </p>
-            <p className="mt-0.5 text-xs text-muted">{formatPercent(product.price.vatRate)} VAT</p>
+            <span className="text-body">{formatMoney(product.price.unitPriceExclVat, product.price.currency)}</span>{" "}
+            <span className="text-muted">{formatUnit(product.price)}</span>
           </>
         ) : (
-          <p className="text-muted">Price unavailable</p>
+          <span className="text-muted">Price unavailable</span>
         )}
-      </div>
+      </p>
     </li>
   );
 }

@@ -15,7 +15,7 @@ acceptance criteria, update this file, make one focused commit (with user approv
 | 3 | Proposal Retrieval & Selection | DONE |
 | 4 | Product Catalog Integration | DONE |
 | 5 | AI Recommendation Engine | DONE |
-| 6 | Revenue Simulation | TODO |
+| 6 | Revenue Simulation | DONE |
 | 7 | Recommendation Feedback Loop | TODO |
 | 8 | Dashboard UI | TODO |
 | 9 | Testing & Vercel Deployment | TODO |
@@ -375,8 +375,9 @@ deterministically calculate the potential additional revenue for each one and fo
 - **Select opportunities** to include in the simulation, and **edit the quantity** per
   opportunity (an integer from 1 to 10,000). The amount always stays list price × quantity, so it is
   never typed in directly; the calculation line and value update immediately.
-- Show a running total: the current proposal total, the selected opportunities, and the potential
-  new total, on the proposal's VAT basis.
+- Show a running total of the selected opportunities, on the proposal's VAT basis. *(Revised: the
+  current proposal total is no longer repeated; it is already in the line items above. The
+  summary shows the selected opportunities with subtotal, VAT and potential revenue incl. VAT.)*
 - Work in integer minor units (as confirmed in Step 2a), and use one VAT basis per proposal
   (block values without tax unless the proposal is tax-inclusive).
 - Refuse to add amounts that use different currencies or VAT bases. Return an explicit
@@ -388,13 +389,49 @@ deterministically calculate the potential additional revenue for each one and fo
 **Dependencies:** Steps 4 and 5.
 
 **Acceptance criteria:**
-- Calculations are pure and deterministic, and the unit tests pass.
-- Currencies and VAT bases are never mixed.
-- Missing pricing is surfaced, not hidden.
+- [x] Calculations are pure and deterministic, and the unit tests pass (Vitest: 67 tests
+  in 6 files; a deliberate bug in the total makes them fail).
+- [x] Currencies and VAT bases are never mixed (`calculateUplift` returns null on a currency
+  mismatch; values and totals use the proposal's VAT basis).
+- [x] Missing pricing is surfaced, not hidden ("Value unavailable", which can't be included and
+  is never counted).
 
 **Expected commit:** `feat: add deterministic revenue simulation`
 
-**Status:** TODO
+**Notes:**
+- `lib/revenue/simulation.ts` (pure, used in the browser): `opportunityAmount` (unit price minus
+  the replaced unit price, × quantity) and `simulateTotals` (current + selected = potential;
+  opportunities without a value are never counted).
+- Each card has an **Include** toggle and a **quantity stepper** (`QuantityInput`, a new UI
+  component). The calculation line, value and running total update live. Quantity limits:
+  1–10,000, and an upgrade can't exceed the booked units. Nothing is selected by default.
+- Each fact appears once. Titles say what (Add / Upgrade … to … / Extend + item). The calculation
+  line shows the AI's verified breakdown ("20 rooms × 1 night × €145.00"; the prompt asks for
+  "N rooms × M nights" breakdowns) and falls back to plain units after an edit
+  ("21 × €145.00 / night"). Only after an edit, "Suggested: 20 rooms × 1 night" appears under the
+  stepper and resets the quantity when clicked. The prompt asks explanations to say why it fits
+  without repeating the product or quantity. The card shows "excl. VAT"; the rate is listed per
+  opportunity in the Potential revenue card.
+- A **Potential revenue** card (beside the opportunities and sticky on large screens, below them on
+  smaller ones) lists only the included opportunities, by name with their VAT rate, on the
+  proposal's VAT basis, then their subtotal excl. VAT, VAT and total incl. VAT
+  (`simulateTotals`, from the server's prices on both bases, so rounding matches the cards).
+  Each new "Find again" run resets the selection.
+- Vitest covers the revenue math, the simulation, the recommendation validation and quantity
+  labels, the catalog join, the proposal model, and the Proposales client's error mapping
+  (with a fake `fetch`). `server-only` is aliased to an empty module in `vitest.config.mts`.
+- **Conflicting opportunities.** The model marks alternatives (`conflictsWith`, e.g. two catering
+  options for the same slot). Validation adds the structural ones it can't miss (two upgrades of
+  the same line item, an upgrade and a cross-sell of the same product), ignores references to
+  dropped or unknown suggestions and makes the links symmetric. Including one alternative removes
+  the other (`toggleSelection`). An upgrade and an extension of the same line stay combinable;
+  when both are included, the extension is priced at the original rate, not the upgrade. Both
+  cases are explained in a notice above the Potential revenue card.
+- The confidence level is shown as fit ("Strong fit", "Good fit", "Possible fit"), matching what
+  the prompt asks for; the field keeps the name `confidence`.
+- Also on this branch: `refactor: move vat column next to item in line items`.
+
+**Status:** DONE
 
 ---
 
@@ -459,8 +496,7 @@ deterministically calculate the potential additional revenue for each one and fo
 **Goal:** Verify critical logic and deploy a working instance to Vercel.
 
 **Tasks:**
-- Make sure tests cover revenue calculations, product ID validation, and the feedback
-  schema validation.
+- Extend the tests (Vitest, set up in Step 6) to the feedback schema validation from Step 7.
 - Run lint, typecheck, tests and the production build.
 - Configure Vercel environment variables (server-only), including `OPENAI_API_KEY`, and make
   sure `RECOMMENDATIONS_MODE` is unset or `live` in production.
@@ -504,3 +540,10 @@ deterministically calculate the potential additional revenue for each one and fo
   Steps 6–7 revised: Step 6 adds selecting opportunities and editing quantities, with a running
   total; Step 7 stores accepted quantities as feedback. Step 9 adds deployment protection and an
   OpenAI spending limit (code review).
+- Step 6: Opportunity selection, quantity editing and a running potential total; Vitest set up
+  with 65 tests covering revenue, validation, catalog, proposal model and client error mapping.
+- Step 6: Conflicting opportunities: the model's judgement plus structural rules; alternatives
+  can't be included together, and an extension notes when it is priced below an included upgrade.
+- Step 6: The Potential revenue card sits beside the opportunities and lists only the selected
+  ones, with subtotal, VAT and total incl. VAT.
+- Step 6: Opportunity cards show each fact once; the page is wider to fit the side column.
