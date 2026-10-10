@@ -70,6 +70,7 @@ async function ProposalView({ params }: { params: PageProps<"/proposals/[uuid]">
       <LineItemsTable proposal={proposal} />
       <RecommendationsPanel
         proposalUuid={proposal.uuid}
+        isDraft={proposal.status === "draft"}
         currency={proposal.currency}
         vatIncluded={proposal.vatIncluded}
       />
@@ -77,7 +78,7 @@ async function ProposalView({ params }: { params: PageProps<"/proposals/[uuid]">
         <CatalogSection
           companyId={proposal.companyId}
           language={proposal.language}
-          inProposal={new Set(proposal.lineItems.map((item) => item.variationId).filter((id) => id !== null))}
+          lineItems={proposal.lineItems}
         />
       </Suspense>
     </article>

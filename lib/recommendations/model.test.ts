@@ -82,6 +82,15 @@ describe("validateRecommendations", () => {
     expect(dropped).toEqual([{ index: 0, reason }]);
   });
 
+  it("doesn't suggest an upgrade again once it is offered as a supplement", () => {
+    const supplementLine: LineItem = { ...roomLine, id: "line-supplement", variationId: 900, title: "Upgrade: Standard Double Room → Superior Double Room" };
+    const { dropped } = validateRecommendations(
+      { recommendations: [raw({ type: "upgrade", productId: 2, lineItemId: "line-room" })] },
+      { catalog, lineItems: [roomLine, supplementLine] },
+    );
+    expect(dropped).toEqual([{ index: 0, reason: "already_in_proposal" }]);
+  });
+
   it("forces an upgrade's quantity to the line item's quantity", () => {
     const { recommendations } = run([raw({ type: "upgrade", productId: 2, lineItemId: "line-room", quantity: 999 })]);
     expect(recommendations[0].quantity).toBe(40);

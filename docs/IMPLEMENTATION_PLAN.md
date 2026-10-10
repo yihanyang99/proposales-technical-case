@@ -16,7 +16,7 @@ acceptance criteria, update this file, make one focused commit (with user approv
 | 4 | Product Catalog Integration | DONE |
 | 5 | AI Recommendation Engine | DONE |
 | 6 | Revenue Simulation | DONE |
-| 7 | Recommendation Feedback Loop | TODO |
+| 7 | Recommendation Feedback Loop | DONE |
 | 8 | Dashboard UI | TODO |
 | 9 | Testing & Vercel Deployment | TODO |
 
@@ -437,33 +437,80 @@ deterministically calculate the potential additional revenue for each one and fo
 
 ## Step 7 — Recommendation Feedback Loop
 
-**Goal:** Let salespeople accept or dismiss recommendations and capture structured feedback.
+**Goal:** Let salespeople add opportunities to the proposal or mark them as not a fit, capture
+structured feedback, and update the draft in Proposales.
 
 **Tasks:**
-- Add accept and dismiss actions per recommendation. Accepting stores the selected quantity,
-  including any manual change from the AI's suggestion, which is a useful feedback signal.
-- Dismissal requires a reason (Already included in another package / Customer has a strict
-  budget / Not relevant to this event / Product is unavailable / Other) plus an optional
-  comment.
-- Validate feedback with Zod on the server.
-- Persist feedback using the simplest justified option. Decide between in-memory/local
-  storage and PostgreSQL, and document the choice. Do not store unnecessary customer data.
-- Make the Step 6 simulation reflect accepted and dismissed recommendations.
-- Optional (the API supports it per Step 2): "apply to draft" via `PATCH /v3/proposals/{uuid}`.
-  Only for proposals with status `draft`. Build the complete block list from a freshly fetched
-  proposal (the PATCH replaces all blocks), show the change for confirmation, handle 409
-  conflicts, and never send or publish. Creating a new version of a sent proposal is out of scope.
+- Per opportunity: **Add to proposal** (keeps the chosen quantity, including manual changes,
+  which is a useful feedback signal) or **Not a fit**, with a required reason (Already included
+  in another package / Customer has a strict budget / Not relevant to this event / Product is
+  unavailable / Other) and an optional comment.
+- Validate feedback with Zod on the server and persist it with the simplest justified option.
+  Do not store unnecessary customer data.
+- **Update the draft in Proposales** (`PATCH /v3/proposals/{uuid}`) after an explicit
+  confirmation: every opportunity becomes an optional extra the customer can pick, existing
+  items never change, only drafts, never send or publish. Build the full block list from a
+  freshly fetched proposal (the PATCH replaces all blocks) and handle 409 conflicts.
 
-**Dependencies:** Steps 5 and 6. Step 2 findings for the optional draft write.
+**Dependencies:** Steps 5 and 6; Step 2 findings for the draft write.
 
 **Acceptance criteria:**
-- Accept and dismiss work, and a dismissal cannot be submitted without a reason.
+- Adding and "not a fit" work, and "not a fit" cannot be saved without a reason.
 - Feedback is stored in a structured form suitable for future improvement.
-- No proposal is modified without explicit approval, and none is ever sent or published.
+- No proposal is modified without explicit confirmation, existing items are never changed, and
+  nothing is ever sent or published.
 
-**Expected commit:** `feat: add recommendation feedback loop`
+**Expected commits:** `feat: add recommendation feedback loop` and
+`feat: add opportunities to the draft in proposales`
 
-**Status:** TODO
+**Decisions:**
+- **Storage: Postgres on Neon** (Vercel Marketplace, Frankfurt), one `recommendation_feedback`
+  table via `@neondatabase/serverless` and parameterised SQL, no ORM. Feedback must survive
+  deploys, be shared by all salespeople and be queryable. In-memory or a file is lost on Vercel,
+  browser storage stays on one device, and the proposal `data` would turn every click into a
+  write to the customer's data. Without `DATABASE_URL`, development uses an in-memory store and
+  production refuses to run.
+- **Opportunities go in as optional extras**, so the customer decides and the original plan is
+  untouched. Unpicked optional blocks don't count in the proposal total (verified live).
+- **Upgrades are an upgrade supplement product** ("Upgrade: Standard Double Room → Superior
+  Double Room"), optional, priced at the difference for every booked unit. Proposales takes
+  block titles from the content library and has no either/or between blocks, so a room at the
+  difference would look like a cheap room and a room at full price would be paid twice. The
+  supplement is found by title or created (`POST /v3/content`) on first use, after confirmation,
+  and is hidden from the catalog and the AI.
+
+**Notes:**
+- Cards: **Add to proposal** / **Added** (click to remove) and **Not a fit**, which opens the
+  reason chips (`ChoiceChip`, native radios) and a comment field. Typing a comment without a
+  chip selects **Other** (the text is the reason). A card marked not a fit collapses to its
+  title and reason with **Undo**. Adding an alternative removes the added alternative.
+- Each choice is saved at once (`saveFeedback` / `clearFeedback`; Zod-validated), one row per
+  proposal and suggestion (`type:productId:lineItemId`, stable across runs), saved in order so
+  the last click wins; a failed save shows Retry. Stored: ids, type, suggested and chosen
+  quantity, fit level, decision, reason, comment, timestamp. No proposal or customer data.
+- **Used for improvement:** "Find again" restores earlier choices, and the prompt gets this
+  proposal's dismissals with their reason (`previouslyDismissed`). Comments may name the
+  customer, so they are never sent to the model. An upgrade already offered as a supplement is
+  not suggested again.
+- The **Potential revenue** card lists the added opportunities ("Optional for the customer")
+  with Subtotal / VAT / Total. **Update draft in Proposales** asks "Add 2 optional extras to the
+  draft? Nothing is sent to the customer."; **Confirm** calls `applyProposalUpdate`, which
+  re-fetches the proposal, re-derives every price from the rate card and the proposal, re-sends
+  every existing block with all its input fields (a loose write-path schema keeps fields like
+  `package_split`), appends one optional block per opportunity with `quantity_editable: true`
+  (the customer can change the amount), and maps errors (not a draft, 409) to clear messages.
+  Afterwards the cards show "In proposal", the line items reload, and **Open proposal** links
+  to the Proposales editor (`lib/proposales/links.ts`).
+- The hotel catalog shows each product's status in the proposal: **In proposal** (included),
+  **In proposal · extension offered**, **Optional extra**, or **Optional upgrade** (offered
+  through its supplement).
+- The only Proposales writes live in `lib/proposals/draft-service.ts`.
+- Tests: feedback schema and decisions, prompt context without comments, in-memory store, draft
+  planner (pricing, supplements, refusals, block list), supplement filter, catalog status,
+  editor link — 104 tests in 10 files.
+
+**Status:** DONE (verified live: feedback in Neon, and draft updates with optional extras, an
+upgrade supplement and flexible quantities)
 
 ---
 
@@ -504,6 +551,9 @@ deterministically calculate the potential additional revenue for each one and fo
   server action is a public endpoint that triggers a paid OpenAI call on every request, with no
   authentication or rate limit. Turn on Vercel Deployment Protection (password or Vercel login)
   for the deployment, and set a monthly spending limit on the OpenAI project.
+- Keep test feedback out of production: point local development at a Neon `dev` branch and the
+  Vercel deployment at `main` (or clear `recommendation_feedback` once before going live). Set
+  the Vercel function region to Frankfurt (`fra1`), next to the database.
 - Deploy and smoke-test the end-to-end flow.
 - Update `README.md` with setup instructions, architecture overview, decisions, limitations
   and the deployed URL.
@@ -547,3 +597,7 @@ deterministically calculate the potential additional revenue for each one and fo
 - Step 6: The Potential revenue card sits beside the opportunities and lists only the selected
   ones, with subtotal, VAT and total incl. VAT.
 - Step 6: Opportunity cards show each fact once; the page is wider to fit the side column.
+- Step 7: "Apply to draft" moved from optional to core: opportunities are added to the draft in
+  Proposales as optional extras (upgrades as a supplement at the difference), existing items
+  never change. Feedback (added / not a fit with a reason) is stored in Postgres on Neon and
+  feeds the next prompt.

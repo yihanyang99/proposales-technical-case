@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { CatalogProduct } from "@/lib/catalog/model";
+import { upgradeSupplementTitle, type CatalogProduct } from "@/lib/catalog/model";
 import type { LineItem } from "@/lib/proposals/model";
 import { MAX_QUANTITY } from "@/lib/revenue/simulation";
 
@@ -129,6 +129,9 @@ export function validateRecommendations(
       }
       if (raw.type === "upgrade") {
         if (lineItem.variationId === product.variationId) return drop("line_item_mismatch");
+        // Already offered to the customer as an optional upgrade supplement.
+        const supplement = upgradeSupplementTitle(lineItem.title, product.title);
+        if (context.lineItems.some((line) => line.title === supplement)) return drop("already_in_proposal");
         const current = lineItem.variationId !== null ? products.get(lineItem.variationId) : undefined;
         if (current?.category && product.category && current.category !== product.category) {
           return drop("category_mismatch");

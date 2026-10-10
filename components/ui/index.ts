@@ -3,7 +3,7 @@
 export { Badge, Dot, type Tone } from "./badge";
 export { Button, buttonStyles, type ButtonSize, type ButtonVariant } from "./button";
 export { Card, cardStyles } from "./card";
-export { Chip, ChipGroup } from "./chips";
+export { Chip, ChipGroup, ChoiceChip, ChoiceGroup } from "./chips";
 export { Alert, EmptyState, Skeleton } from "./feedback";
 export { FieldLabel, Input, SearchInput } from "./field";
 export { Page, PageHeader, SectionTitle } from "./layout";

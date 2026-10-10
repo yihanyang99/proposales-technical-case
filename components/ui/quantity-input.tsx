@@ -13,6 +13,7 @@ export function QuantityInput({
   max,
   onChange,
   label,
+  disabled = false,
   className,
 }: {
   value: number;
@@ -20,6 +21,7 @@ export function QuantityInput({
   max: number;
   onChange: (value: number) => void;
   label: string;
+  disabled?: boolean;
   className?: string;
 }) {
   const [draft, setDraft] = useState<string | null>(null);
@@ -33,7 +35,7 @@ export function QuantityInput({
 
   return (
     <div className={cn("inline-flex items-center gap-1 rounded-full bg-surface-1 p-1", className)}>
-      <button type="button" className={STEP_BUTTON} onClick={() => onChange(Math.max(value - 1, min))} disabled={value <= min} aria-label={`Decrease ${label}`}>
+      <button type="button" className={STEP_BUTTON} onClick={() => onChange(Math.max(value - 1, min))} disabled={disabled || value <= min} aria-label={`Decrease ${label}`}>
         <svg aria-hidden="true" viewBox="0 0 16 16" className="size-3.5">
           <path d="M3.5 8h9" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
         </svg>
@@ -42,6 +44,7 @@ export function QuantityInput({
         type="text"
         inputMode="numeric"
         aria-label={label}
+        disabled={disabled}
         value={draft ?? String(value)}
         onChange={(event) => setDraft(event.target.value.replace(/[^\d]/g, ""))}
         onBlur={(event) => commit(event.target.value)}
@@ -49,9 +52,9 @@ export function QuantityInput({
           if (event.key === "Enter") commit(event.currentTarget.value);
           if (event.key === "Escape") setDraft(null);
         }}
-        className="w-14 bg-transparent text-center text-sm font-medium text-heading tabular-nums focus:outline-none"
+        className="w-14 bg-transparent text-center text-sm font-medium text-heading tabular-nums focus:outline-none disabled:opacity-60"
       />
-      <button type="button" className={STEP_BUTTON} onClick={() => onChange(Math.min(value + 1, max))} disabled={value >= max} aria-label={`Increase ${label}`}>
+      <button type="button" className={STEP_BUTTON} onClick={() => onChange(Math.min(value + 1, max))} disabled={disabled || value >= max} aria-label={`Increase ${label}`}>
         <svg aria-hidden="true" viewBox="0 0 16 16" className="size-3.5">
           <path d="M8 3.5v9M3.5 8h9" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
         </svg>

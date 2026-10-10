@@ -114,6 +114,28 @@ export const proposalSchema = z.object({
   updated_at: z.number().int().nullish(),
 });
 
+/**
+ * Write path only: a block exactly as the API returned it, unknown fields included. A draft
+ * update replaces the full block list, so existing blocks must be re-sent without losing data.
+ */
+export const rawBlockSchema = z.looseObject({ uuid: z.string(), type: z.string() });
+export type RawBlock = z.infer<typeof rawBlockSchema>;
+
+/** Write path only: what a draft update needs. Customer PII is stripped like everywhere else. */
+export const proposalForUpdateSchema = z.object({
+  uuid: z.string(),
+  company_id: z.number().int(),
+  language: z.string(),
+  status: proposalStatusSchema,
+  currency: z.string().nullish(),
+  blocks: z.array(rawBlockSchema),
+});
+export type ProposalForUpdate = z.infer<typeof proposalForUpdateSchema>;
+
+export const proposalMutationResponseSchema = z.object({
+  proposal: z.object({ uuid: z.string(), url: z.string() }),
+});
+
 export const errorResponseSchema = z.object({
   error: z.object({ message: z.string(), code: z.string().optional() }),
 });

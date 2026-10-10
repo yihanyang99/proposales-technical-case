@@ -1,4 +1,5 @@
 import type { CatalogProduct } from "@/lib/catalog/model";
+import type { PromptDismissal } from "@/lib/feedback/model";
 import type { ProposalDetail } from "@/lib/proposals/model";
 import { MAX_RECOMMENDATIONS } from "./model";
 
@@ -15,6 +16,7 @@ Rules:
 - Do not output prices or revenue; they are calculated separately.
 - Base quantities on the event facts (guests, days, nights, existing quantities). In quantityRationale, write the quantity as a compact multiplication of those facts that equals the quantity: "N rooms × M nights" for rooms priced per night, "N guests × M days" for per-person items, "N days" for day-priced items, e.g. "20 rooms × 1 night" or "80 guests × 2 days".
 - Prefer suggestions that can all be included together. If two suggestions are alternatives for the same need (e.g. two upgrades of the same rooms, or two catering options for the same slot), list each one's 0-based index in your list in the other's conflictsWith; otherwise leave conflictsWith empty.
+- previouslyDismissed lists suggestions the salesperson already dismissed for this proposal, with their reason. Do not suggest them again, and take the reasons into account (e.g. a strict budget).
 - Prefer fewer, high-quality suggestions. Return an empty list if nothing clearly fits.
 - Confidence is your qualitative judgement of fit (low, medium, high), not a probability that the customer buys.
 - Write explanations for the salesperson in English, 1-2 sentences, referring to the event facts. Say why it fits; the product name and quantity are already shown next to it, so do not repeat them.`;
@@ -30,7 +32,12 @@ function money(minor: number | null | undefined, currency: string | null | undef
 }
 
 /** Event facts, line items and catalog as compact JSON. Contains no customer personal data. */
-export function buildUserPrompt(proposal: ProposalDetail, catalog: CatalogProduct[]): string {
+export function buildUserPrompt(
+  proposal: ProposalDetail,
+  catalog: CatalogProduct[],
+  dismissals: PromptDismissal[] = [],
+): string {
+  const titles = new Map(catalog.map((product) => [product.variationId, product.title]));
   const { event } = proposal;
   const data = {
     event: {
@@ -57,6 +64,12 @@ export function buildUserPrompt(proposal: ProposalDetail, catalog: CatalogProduc
       category: product.category,
       unit: product.price ? (product.price.unitLabel ?? product.price.unit) : null,
       listPriceExclVat: money(product.price?.unitPriceExclVat, product.price?.currency),
+    })),
+    previouslyDismissed: dismissals.map((dismissal) => ({
+      type: dismissal.type,
+      productId: dismissal.productId,
+      title: titles.get(dismissal.productId) ?? null,
+      reason: dismissal.reason,
     })),
   };
   return `Suggest revenue opportunities for this proposal.\n\n${JSON.stringify(data, null, 2)}`;

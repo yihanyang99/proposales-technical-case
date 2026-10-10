@@ -25,6 +25,10 @@ step-by-step plan.
   (`data/rate-card.json`); extension prices come from the proposal's own blocks.
 - Never call write endpoints (`POST`/`PATCH`/`PUT`/`DELETE`) without explicit user approval
   for that specific run.
+- The app's only writes are in `lib/proposals/draft-service.ts` ("Update draft in Proposales"):
+  they run only after the salesperson confirms the update, add every opportunity as
+  an optional block (upgrades as a supplement product) and never change existing blocks, send or
+  publish. During development, never trigger them yourself without approval for that run.
 
 ## Architecture
 
@@ -58,6 +62,12 @@ step-by-step plan.
   opportunity, `simulation.ts` for edited quantities and totals; safe to use in the browser).
 - `RECOMMENDATIONS_MODE=mock` avoids OpenAI calls during UI work. Never run live AI calls
   without need; each costs money.
+- `lib/feedback/`: accept/dismiss feedback. `model.ts` is pure (Zod input schema, decision
+  helpers, the dismissal context for the prompt); `store.ts` is server-only and uses Postgres on
+  Neon when `DATABASE_URL` is set, an in-memory store in development without it, and refuses to
+  run in production without it. Stored rows hold ids, quantities, the decision, reason and the
+  salesperson's optional comment, and no proposal or customer data from Proposales. Comments are
+  free text, so they are never logged or sent to the model.
 - `lib/catalog/`: rate card schema, pure catalog join (content library + rate card, matched on
   `variation_id`) and the server-only `getCatalog`. A product without a rate-card entry has
   `price: null`, never 0.
@@ -71,7 +81,7 @@ step-by-step plan.
 ## UI Library
 
 - Reusable UI lives in `components/ui/` (import from `@/components/ui`): `Button`/`buttonStyles`,
-  `Input`, `FieldLabel`, `Card`/`cardStyles`, `Chip`/`ChipGroup`, `Badge`, `Dot`, `Alert`,
+  `Input`, `FieldLabel`, `Card`/`cardStyles`, `Chip`/`ChipGroup` (links), `ChoiceChip`/`ChoiceGroup` (radio pills in forms), `Badge`, `Dot`, `Alert`,
   `EmptyState`, `Skeleton`, `Page`, `PageHeader`, `SectionTitle`, `Table*` primitives, `Totals`, `Spinner`, `LevelBars`,
   `QuantityInput` and `LocalDate` (timestamps in the viewer's time zone; never format timestamps in UTC on the server).
 - Prefer chips (pill links or choices) over a native `<select>`: the open menu of a native select

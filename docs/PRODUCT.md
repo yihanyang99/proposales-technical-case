@@ -38,9 +38,11 @@ Revenue Copilot does **not** rebuild any of that. It:
 - **Adds** an analysis layer that Proposales does not provide: contextual revenue suggestions
   with explanations.
 - **Stays out of the customer-facing flow.** It never sends, publishes or e-signs proposals.
-- **Optionally writes back** approved changes to a proposal *draft*, only if the API safely
-  supports this and only after explicit user approval. The salesperson then finishes and
-  sends the proposal in Proposales as usual.
+- **Writes back** the opportunities the salesperson chose to the proposal *draft*, only after
+  they confirm the update. Every opportunity becomes an **optional extra** the
+  customer can pick in the Proposales proposal (an upgrade as a supplement priced at the
+  difference); what the customer already has never changes. The
+  salesperson then finishes and sends the proposal in Proposales as usual.
 
 ## 4. Core User Journey
 
@@ -49,11 +51,11 @@ Revenue Copilot does **not** rebuild any of that. It:
 3. Use an LLM to analyze the event context.
 4. Identify up to three relevant revenue opportunities.
 5. Explain why each recommendation is appropriate.
-6. Accept or dismiss each recommendation.
-7. Capture the reason when a recommendation is dismissed.
+6. Add each recommendation to the proposal, or mark it as not a fit.
+7. Capture the reason when a recommendation is not a fit.
 8. Simulate the potential additional revenue.
-9. Optionally apply approved recommendations to a proposal draft, if the API supports safe
-   modifications (to be confirmed in Step 2).
+9. Update the draft in Proposales after confirming: optional extras for the
+   customer to pick, the existing items unchanged. Nothing is sent to the customer.
 
 ## 5. Revenue Opportunity Types
 

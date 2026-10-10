@@ -5,16 +5,20 @@ import {
   companySchema,
   contentItemSchema,
   errorResponseSchema,
+  proposalForUpdateSchema,
+  proposalMutationResponseSchema,
   proposalSchema,
   proposalSearchResultSchema,
+  type ProposalForUpdate,
   type Company,
   type ContentItem,
   type Proposal,
   type ProposalSearchResult,
 } from "./schemas";
 
-// Read-only Proposales API client. Write operations are intentionally absent: they
-// require explicit user approval and are added only where a step needs them.
+// Proposales API client. Reads, plus two writes for "Update draft in Proposales": adding a
+// draft's blocks and creating an upgrade supplement product. Writes are only called after the
+// salesperson has confirmed the update; nothing is ever sent or published.
 
 const BASE_URL = "https://api.proposales.com";
 /** Maximum proposals per search (spec: 1–25, no pagination). */
@@ -27,6 +31,7 @@ export type ProposalesErrorKind =
   | "bad_request"
   | "invalid_response"
   | "network"
+  | "conflict"
   | "server";
 
 export class ProposalesApiError extends Error {
@@ -44,16 +49,23 @@ function kindForStatus(status: number): ProposalesErrorKind {
   if (status === 400) return "bad_request";
   if (status === 401 || status === 403) return "unauthorized";
   if (status === 404) return "not_found";
+  if (status === 409) return "conflict";
   return "server";
 }
 
-async function request<T>(path: string, schema: z.ZodType<T>): Promise<T> {
+async function request<T>(path: string, schema: z.ZodType<T>, write?: { method: "PATCH" | "POST"; body: unknown }): Promise<T> {
   const { PROPOSALES_API_KEY } = getServerEnv();
 
   let response: Response;
   try {
     response = await fetch(`${BASE_URL}${path}`, {
-      headers: { Authorization: `Bearer ${PROPOSALES_API_KEY}`, Accept: "application/json" },
+      method: write?.method ?? "GET",
+      headers: {
+        Authorization: `Bearer ${PROPOSALES_API_KEY}`,
+        Accept: "application/json",
+        ...(write && { "Content-Type": "application/json" }),
+      },
+      body: write && JSON.stringify(write.body),
       cache: "no-store",
     });
   } catch {
@@ -116,15 +128,12 @@ export async function searchProposals(options: {
   return data;
 }
 
-export async function getProposal(uuid: string): Promise<Proposal> {
+async function fetchProposal<T>(uuid: string, schema: z.ZodType<T>): Promise<T> {
   if (!UUID_PATTERN.test(uuid)) {
     throw new ProposalesApiError("Invalid proposal ID", "bad_request");
   }
   try {
-    const { data } = await request(
-      `/v3/proposals/${uuid}`,
-      z.object({ data: proposalSchema }),
-    );
+    const { data } = await request(`/v3/proposals/${uuid}`, z.object({ data: schema }));
     return data;
   } catch (error) {
     // The API answers an unknown proposal with 500 and an empty body instead of 404.
@@ -135,6 +144,29 @@ export async function getProposal(uuid: string): Promise<Proposal> {
   }
 }
 
+export function getProposal(uuid: string): Promise<Proposal> {
+  return fetchProposal(uuid, proposalSchema);
+}
+
+/** The proposal with its blocks exactly as stored, as the basis for a draft update. */
+export function getProposalForUpdate(uuid: string): Promise<ProposalForUpdate> {
+  return fetchProposal(uuid, proposalForUpdateSchema);
+}
+
+/**
+ * Replaces a draft's full, ordered block list (`PATCH /v3/proposals/{uuid}`). Only drafts and
+ * templates can be updated; nothing is sent to the customer.
+ */
+export async function updateProposalDraftBlocks(uuid: string, companyId: number, blocks: unknown[]): Promise<void> {
+  if (!UUID_PATTERN.test(uuid)) {
+    throw new ProposalesApiError("Invalid proposal ID", "bad_request");
+  }
+  await request(`/v3/proposals/${uuid}`, proposalMutationResponseSchema, {
+    method: "PATCH",
+    body: { company_id: companyId, blocks },
+  });
+}
+
 export async function listContent(options: {
   companyId: number;
   productIds?: number[];
@@ -143,4 +175,13 @@ export async function listContent(options: {
   if (options.productIds?.length) params.set("product_id", options.productIds.join(","));
   const { data } = await request(`/v3/content?${params}`, dataList(contentItemSchema));
   return data;
+}
+
+/** Creates one product in the content library and returns its variation id, used as a block's `content_id` (`POST /v3/content`). */
+export async function createContent(input: { companyId: number; language: string; title: string; description: string }): Promise<number> {
+  const { data } = await request("/v3/content", z.object({ data: z.object({ variation_id: z.number().int() }) }), {
+    method: "POST",
+    body: { company_id: input.companyId, language: input.language, title: input.title, description: input.description },
+  });
+  return data.variation_id;
 }

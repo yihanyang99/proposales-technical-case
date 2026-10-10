@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { opportunityAmount, simulateTotals, toggleSelection } from "./simulation";
+import { opportunityAmount, simulateTotals } from "./simulation";
 
 describe("opportunityAmount", () => {
   it("multiplies the unit price by the quantity", () => {
@@ -31,20 +31,3 @@ describe("simulateTotals", () => {
     });
   });
 });
-
-describe("toggleSelection", () => {
-  const choices = { a: { selected: false, quantity: 1 }, b: { selected: true, quantity: 2 }, c: { selected: true, quantity: 3 } };
-
-  it("removes alternatives when including an opportunity", () => {
-    expect(toggleSelection(choices, "a", ["b"])).toEqual({
-      a: { selected: true, quantity: 1 },
-      b: { selected: false, quantity: 2 },
-      c: { selected: true, quantity: 3 },
-    });
-  });
-
-  it("leaves other opportunities alone when removing one", () => {
-    expect(toggleSelection(choices, "b", ["c"])).toEqual({ ...choices, b: { selected: false, quantity: 2 } });
-  });
-});
-

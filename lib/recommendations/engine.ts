@@ -2,6 +2,8 @@ import "server-only";
 import { openai, type OpenAILanguageModelResponsesOptions } from "@ai-sdk/openai";
 import { APICallError, generateText, NoObjectGeneratedError, NoOutputGeneratedError, Output } from "ai";
 import { getCatalog } from "@/lib/catalog/service";
+import { dismissalsForPrompt, type FeedbackRecord } from "@/lib/feedback/model";
+import { getFeedbackStore } from "@/lib/feedback/store";
 import { getAiEnv, getRecommendationsMode } from "@/lib/env";
 import { getProposalDetail } from "@/lib/proposals/service";
 import type { ProposalDetail } from "@/lib/proposals/model";
@@ -33,7 +35,18 @@ export type RecommendationResult = {
   mock: boolean;
   /** Number of model suggestions removed by validation (for transparency, no content). */
   droppedCount: number;
+  /** Earlier decisions on this proposal's suggestions, to restore them in the panel. */
+  feedback: FeedbackRecord[];
 };
+
+/** Earlier feedback is helpful context, not a requirement: a storage outage must not block suggestions. */
+async function loadFeedback(proposalUuid: string): Promise<FeedbackRecord[]> {
+  try {
+    return await getFeedbackStore().listForProposal(proposalUuid);
+  } catch {
+    return [];
+  }
+}
 
 /**
  * Loads the proposal and catalog server-side (never trusting client data), asks the model for
@@ -50,7 +63,7 @@ export async function generateRecommendations(proposalUuid: string): Promise<Rec
     }
   }
 
-  const proposal = await getProposalDetail(proposalUuid);
+  const [proposal, feedback] = await Promise.all([getProposalDetail(proposalUuid), loadFeedback(proposalUuid)]);
   const catalog = await getCatalog(proposal.companyId, proposal.language);
 
   let output: ModelOutput;
@@ -62,7 +75,7 @@ export async function generateRecommendations(proposalUuid: string): Promise<Rec
       ({ output } = await generateText({
         model: openai(model),
         system: SYSTEM_PROMPT,
-        prompt: buildUserPrompt(proposal, catalog.products),
+        prompt: buildUserPrompt(proposal, catalog.products, dismissalsForPrompt(feedback)),
         output: Output.object({ schema: modelOutputSchema }),
         providerOptions: {
           openai: {
@@ -97,5 +110,5 @@ export async function generateRecommendations(proposalUuid: string): Promise<Rec
           ? calculateUplift({ type: "extension", lineItem: r.lineItem!, quantity: r.quantity }, proposal.currency)
           : calculateUplift({ type: "upgrade", product: r.product, lineItem: r.lineItem!, quantity: r.quantity }, proposal.currency),
   }));
-  return { proposal, recommendations: valued, mock, droppedCount: dropped.length };
+  return { proposal, recommendations: valued, mock, droppedCount: dropped.length, feedback };
 }

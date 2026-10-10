@@ -39,9 +39,55 @@ export function pickLocalized(text: Record<string, string>, language: string): s
   return value?.trim() || null;
 }
 
+const SUPPLEMENT_PREFIX = "Upgrade: ";
+
+/**
+ * Library title of the product that upgrades one item to another (e.g. a room type), added to a
+ * proposal as an optional extra priced at the difference. Shown to the customer.
+ */
+export function upgradeSupplementTitle(fromTitle: string, toTitle: string): string {
+  return `${SUPPLEMENT_PREFIX}${fromTitle} → ${toTitle}`;
+}
+
+/** Upgrade supplements only exist to carry an upgrade in a proposal, so the catalog and the AI never see them. */
+export function isUpgradeSupplement(title: string): boolean {
+  return title.startsWith(SUPPLEMENT_PREFIX) && title.includes(" → ");
+}
+
+export type ProposalStatus = "included" | "included_with_extension" | "optional" | "optional_upgrade";
+
+/**
+ * How each catalog product appears in a proposal: included, included with an optional extension
+ * (e.g. extra nights), an optional extra, or offered as an optional upgrade (through its
+ * supplement). Absent means not in it.
+ */
+export function proposalStatusByProduct(
+  products: CatalogProduct[],
+  lineItems: { variationId: number | null; title: string; optional: boolean }[],
+): Map<number, ProposalStatus> {
+  const included = new Set<number>();
+  const optional = new Set<number>();
+  for (const line of lineItems) {
+    if (line.variationId === null || isUpgradeSupplement(line.title)) continue;
+    (line.optional ? optional : included).add(line.variationId);
+  }
+  const status = new Map<number, ProposalStatus>();
+  for (const id of included) status.set(id, optional.has(id) ? "included_with_extension" : "included");
+  for (const id of optional) if (!included.has(id)) status.set(id, "optional");
+  const titles = new Set(lineItems.map((line) => line.title));
+  for (const product of products) {
+    if (status.has(product.variationId)) continue;
+    if (lineItems.some((line) => titles.has(upgradeSupplementTitle(line.title, product.title)))) {
+      status.set(product.variationId, "optional_upgrade");
+    }
+  }
+  return status;
+}
+
 export function joinCatalog(items: ContentItem[], card: RateCard, language: string): Catalog {
   const entries = new Map(card.products.map((entry) => [entry.variation_id, entry]));
-  const products = items.map((item): CatalogProduct => {
+  const offered = items.filter((item) => !isUpgradeSupplement(pickLocalized(item.title, language) ?? ""));
+  const products = offered.map((item): CatalogProduct => {
     const entry = entries.get(item.variation_id);
     return {
       productId: item.product_id,

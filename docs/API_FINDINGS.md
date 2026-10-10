@@ -200,8 +200,20 @@ Results of the Step 2 investigation (2026-10-09).
   - None of these endpoints sends or publishes a proposal. Sending is not part of the API.
 - **Live (create only):** `POST /v3/content` returns `{ data: { product_id, variation_id, message } }`.
   `POST /v3/proposals` returns `{ proposal: { uuid, url } }` and creates a `draft` with no
-  recipient. Both were exercised by the approved seed runs. `PATCH` has not been exercised.
-- **Verification status:** Verified (live) for create. Verified (spec) for `PATCH`.
+  recipient. Both were exercised by the approved seed runs.
+- **Live (`PATCH /v3/proposals/{uuid}`, 2026-10-10, Sales Team Offsite draft, approved runs):**
+  - `200` with `{ proposal: { uuid, url } }`; the proposal stays a `draft` and nothing is sent.
+  - Re-sent blocks with their `uuid` keep their uuid, values and position. A block sent without
+    a `uuid` is created with a new uuid.
+  - New blocks get `package_split` filled in by Proposales from the product (e.g.
+    `type: "accommodation"`, `vat: 0.12`), even when none is sent.
+  - `optional: true` creates an optional block (`optional_picked: false`). **Unpicked optional
+    blocks are not counted** in `value_without_tax` / `value_with_tax`.
+  - Optional blocks for content created with `POST /v3/content` (the upgrade supplement) work
+    like any other product block; the title comes from the content library. A second upgrade of
+    the same rooms reuses the existing supplement (found by title).
+  - `quantity_editable: true` is stored, so the customer can change the quantity.
+- **Verification status:** Verified (live) for create and for `PATCH` with `blocks`.
 
 ## Proposal Versioning
 
@@ -228,7 +240,7 @@ Results of the Step 2 investigation (2026-10-09).
 
 Answered:
 - How are proposals listed or searched, and is pagination supported? → `proposal-search`, max 25, no pagination.
-- Can a proposal draft be updated safely without publishing or sending it? → Yes per spec (`PATCH` on drafts only, nothing is sent). Not live-tested.
+- Can a proposal draft be updated safely without publishing or sending it? → Yes, verified live (`PATCH` with `blocks` on a draft, nothing is sent).
 - Does the API support "optional" products within a proposal? → Yes, via block `optional` / `optional_picked`.
 - Does the API expose product availability? → No.
 - Are catalog prices available? → **No**. Prices exist only on proposal blocks.
@@ -243,7 +255,7 @@ Still open:
 - Can one proposal mix currencies (`block.currency` vs `proposal.currency`)? The seeded data
   is single-currency; Step 6 refuses to mix them either way.
 - What is the live structure of `multi_product_data` (packages)? Not seeded.
-- How do `PATCH /v3/proposals/{uuid}` and the 409 conflict behave? Only relevant if "apply to draft" is built in Step 7.
+- When does `PATCH /v3/proposals/{uuid}` return 409? Not seen yet; the app maps it to a clear message and re-fetches before every write.
 - **Where should an integration read list prices?** Catalog prices set in the UI are not in the
   public API. The spec references Oracle product codes (`external_id`), `integration_id` and
   `integration_metadata`. This *suggests* (unverified) that prices may normally come from a

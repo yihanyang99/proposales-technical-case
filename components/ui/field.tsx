@@ -3,11 +3,12 @@ import { cn } from "@/lib/cn";
 
 // Form fields: white pills on the page grey, no borders, focus ring for keyboard users.
 const FIELD =
-  "w-full rounded-full bg-surface-2 text-sm text-heading placeholder:text-muted " +
+  "w-full rounded-full text-sm text-heading placeholder:text-muted " +
   "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50";
 
-export function Input({ className, ...props }: ComponentProps<"input">) {
-  return <input className={cn(FIELD, "h-12 px-5", className)} {...props} />;
+/** `soft` is for fields on a white card, where the default white field would disappear. */
+export function Input({ className, variant = "default", ...props }: ComponentProps<"input"> & { variant?: "default" | "soft" }) {
+  return <input className={cn(FIELD, "h-12 px-5", variant === "soft" ? "bg-badge" : "bg-surface-2", className)} {...props} />;
 }
 
 /** Compact search field with a magnifier icon. `className` applies to the wrapper (e.g. width). */
@@ -22,7 +23,7 @@ export function SearchInput({ className, ...props }: Omit<ComponentProps<"input"
         <circle cx="7" cy="7" r="4.75" fill="none" stroke="currentColor" strokeWidth="1.5" />
         <path d="m10.5 10.5 3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
       </svg>
-      <input type="search" className={cn(FIELD, "h-9 pr-4 pl-10")} {...props} />
+      <input type="search" className={cn(FIELD, "h-9 bg-surface-2 pr-4 pl-10")} {...props} />
     </div>
   );
 }

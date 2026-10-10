@@ -38,3 +38,11 @@ export function getAiEnv(): AiEnv {
   const env = aiEnvSchema.parse(process.env);
   return { model: env.OPENAI_MODEL };
 }
+
+/** Postgres connection string for feedback storage (Neon); null when not configured. */
+export function getDatabaseUrl(): string | null {
+  const url = process.env.DATABASE_URL?.trim();
+  if (!url) return null;
+  if (!/^postgres(ql)?:\/\//.test(url)) throw new Error("Invalid server environment: DATABASE_URL");
+  return url;
+}
