@@ -92,7 +92,7 @@ async function ProposalView({ params }: { params: PageProps<"/proposals/[uuid]">
         currency={proposal.currency}
         vatIncluded={proposal.vatIncluded}
       />
-      <Suspense fallback={<Skeleton className="h-72" />}>
+      <Suspense fallback={<Skeleton className="h-[5.25rem]" />}>
         <CatalogSection
           companyId={proposal.companyId}
           language={proposal.language}

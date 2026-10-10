@@ -1,29 +1,9 @@
-import { CategoryIcon } from "@/components/category-icon";
-import { Alert, Badge, Card, SectionTitle } from "@/components/ui";
-import {
-  groupByCategory,
-  proposalStatusByProduct,
-  type CatalogProduct,
-  type ProductPrice,
-  type ProposalStatus,
-} from "@/lib/catalog/model";
-import type { ProductCategory } from "@/lib/catalog/rate-card";
+import { CatalogBrowser } from "@/components/catalog-browser";
+import { Alert, cardStyles, SectionTitle } from "@/components/ui";
+import { proposalStatusByProduct, type CatalogProduct } from "@/lib/catalog/model";
 import { getCatalog } from "@/lib/catalog/service";
-import { formatMoney, formatPercent } from "@/lib/format";
+import { cn } from "@/lib/cn";
 import { describeError } from "@/lib/proposales/errors";
-
-const CATEGORY_LABEL: Record<ProductCategory, string> = {
-  accommodation: "Accommodation",
-  meeting_room: "Meeting room",
-  food_and_beverage: "Food & beverage",
-  package: "Package",
-  other: "Other",
-};
-
-/** Unit as shown in Proposales. `unitLabel` is not displayed; it gives the AI context (Step 5). */
-function formatUnit(price: ProductPrice): string {
-  return `/ ${price.unit}`;
-}
 
 /** The hotel's catalog for a proposal's company, with list prices from the rate card. */
 export async function CatalogSection({
@@ -52,70 +32,42 @@ export async function CatalogSection({
   }
 
   const unpriced = products.filter((p) => !p.price);
-  const status = proposalStatusByProduct(products, lineItems);
+  const status = Object.fromEntries(proposalStatusByProduct(products, lineItems));
   return (
-    <section className="space-y-4">
-      <SectionTitle className="mb-0">Hotel catalog</SectionTitle>
-      {unpriced.length > 0 && (
-        <Alert tone="neutral" title={`${unpriced.length} ${unpriced.length === 1 ? "product has" : "products have"} no list price`}>
-          They are not in the rate card, so they are shown but can&apos;t be priced in recommendations.
-        </Alert>
-      )}
-      {orphaned.length > 0 && (
-        <Alert tone="neutral" title="Rate card entries without a live product">
-          {orphaned.map((entry) => entry.title).join(", ")}. Re-generate the rate card with{" "}
-          <code>npm run seed -- --rate-card</code>.
-        </Alert>
-      )}
-      <div className="grid gap-3 sm:grid-cols-2">
-        {groupByCategory(products).map(({ category, products: group }) => (
-          <Card key={category ?? "uncategorised"} className="p-5">
-            <h3 className="mb-4 flex items-center gap-2 font-medium">
-              <CategoryIcon category={category} />
-              {category ? CATEGORY_LABEL[category] : "Not in rate card"}
-            </h3>
-            <ul className="space-y-3">
-              {group.map((product) => (
-                <ProductRow key={product.variationId} product={product} status={status.get(product.variationId)} />
-              ))}
-            </ul>
-          </Card>
-        ))}
-      </div>
-      <p className="text-xs text-muted">
-        List prices exclude VAT.
-      </p>
-    </section>
-  );
-}
-
-const STATUS_LABEL: Record<ProposalStatus, string> = {
-  included: "In proposal",
-  included_with_extension: "In proposal · extension offered",
-  optional: "Optional extra",
-  optional_upgrade: "Optional upgrade",
-};
-
-function ProductRow({ product, status }: { product: CatalogProduct; status: ProposalStatus | undefined }) {
-  return (
-    <li className="flex items-baseline justify-between gap-4 text-sm">
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="text-body">{product.title}</p>
-          {status && <Badge tone={status === "included" || status === "included_with_extension" ? "strong" : "neutral"}>{STATUS_LABEL[status]}</Badge>}
+    <section>
+      {/* One card, collapsed by default: mostly the AI's input, and long for a real hotel. Native <details>, so it works without JavaScript. */}
+      <details className={cn(cardStyles(), "group")}>
+        <summary className="flex cursor-pointer list-none items-center gap-4 rounded-xl px-5 py-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary [&::-webkit-details-marker]:hidden">
+          <div className="min-w-0 flex-1">
+            <SectionTitle className="mb-0">Hotel catalog</SectionTitle>
+            <p className="mt-1 text-sm text-muted">
+              {products.length} {products.length === 1 ? "product" : "products"} · what the AI chooses from
+            </p>
+          </div>
+          <svg aria-hidden="true" viewBox="0 0 16 16" className="size-4 shrink-0 text-muted transition-transform group-open:rotate-90">
+            <path d="m6 4 4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </summary>
+        <div className="space-y-6 px-5 pt-2 pb-5">
+          {unpriced.length > 0 && (
+            <Alert
+              tone="neutral"
+              variant="soft"
+              title={`${unpriced.length} ${unpriced.length === 1 ? "product has" : "products have"} no list price`}
+            >
+              They are not in the rate card, so they are shown but can&apos;t be priced in recommendations.
+            </Alert>
+          )}
+          {orphaned.length > 0 && (
+            <Alert tone="neutral" variant="soft" title="Rate card entries without a live product">
+              {orphaned.map((entry) => entry.title).join(", ")}. Re-generate the rate card with{" "}
+              <code>npm run seed -- --rate-card</code>.
+            </Alert>
+          )}
+          <CatalogBrowser products={products} status={status} />
+          <p className="text-xs text-muted">List prices exclude VAT.</p>
         </div>
-        {product.price && <p className="mt-0.5 text-xs text-muted">{formatPercent(product.price.vatRate)} VAT</p>}
-      </div>
-      <p className="shrink-0 whitespace-nowrap text-right tabular-nums">
-        {product.price ? (
-          <>
-            <span className="text-body">{formatMoney(product.price.unitPriceExclVat, product.price.currency)}</span>{" "}
-            <span className="text-muted">{formatUnit(product.price)}</span>
-          </>
-        ) : (
-          <span className="text-muted">Price unavailable</span>
-        )}
-      </p>
-    </li>
+      </details>
+    </section>
   );
 }

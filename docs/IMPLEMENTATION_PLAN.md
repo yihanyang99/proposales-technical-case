@@ -17,7 +17,7 @@ acceptance criteria, update this file, make one focused commit (with user approv
 | 5 | AI Recommendation Engine | DONE |
 | 6 | Revenue Simulation | DONE |
 | 7 | Recommendation Feedback Loop | DONE |
-| 8 | Dashboard UI | DONE |
+| 8 | Dashboard UI | IN REVIEW |
 | 9 | Testing & Vercel Deployment | TODO |
 
 > **Important:** Step 2 was the architecture checkpoint. Steps 2a–9 below have been revised
@@ -543,10 +543,15 @@ upgrade supplement and flexible quantities)
   the catalog and the side cards. Also: an
   **Open in Proposales** link to the editor in the proposal header; a notice up front when a
   proposal isn't a draft (suggestions stay available as advice); a styled `not-found.tsx`; and a
-  one-line intro on the proposal list. Both tables use a fixed layout with the same column widths
+  one-line intro on the proposal list. The hotel catalog is collapsed by default (native
+  `<details>`, "12 products · what the AI chooses from"), since it is mostly the AI's input and
+  long for a real hotel; opened, it has a search field and category chips (several can be
+  selected; none means all) that filter in the browser (`CatalogBrowser`). It is one card: the categories are stacked sub-sections inside
+  it, so an uneven category never leaves gaps.
+  Both tables use a fixed layout with the same column widths
   and top-aligned rows; the totals block sizes to its content.
 
-**Status:** DONE
+**Status:** IN REVIEW
 
 ---
 

@@ -11,8 +11,12 @@ export function Input({ className, variant = "default", ...props }: ComponentPro
   return <input className={cn(FIELD, "h-12 px-5", variant === "soft" ? "bg-badge" : "bg-surface-2", className)} {...props} />;
 }
 
-/** Compact search field with a magnifier icon. `className` applies to the wrapper (e.g. width). */
-export function SearchInput({ className, ...props }: Omit<ComponentProps<"input">, "type">) {
+/** Compact search field with a magnifier icon. `className` applies to the wrapper (e.g. width); `soft` is for white cards. */
+export function SearchInput({
+  className,
+  variant = "default",
+  ...props
+}: Omit<ComponentProps<"input">, "type"> & { variant?: "default" | "soft" }) {
   return (
     <div className={cn("relative", className)}>
       <svg
@@ -23,7 +27,7 @@ export function SearchInput({ className, ...props }: Omit<ComponentProps<"input"
         <circle cx="7" cy="7" r="4.75" fill="none" stroke="currentColor" strokeWidth="1.5" />
         <path d="m10.5 10.5 3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
       </svg>
-      <input type="search" className={cn(FIELD, "h-9 bg-surface-2 pr-4 pl-10")} {...props} />
+      <input type="search" className={cn(FIELD, "h-9 pr-4 pl-10", variant === "soft" ? "bg-badge" : "bg-surface-2")} {...props} />
     </div>
   );
 }
