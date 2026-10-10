@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ProposalBlock } from "@/lib/proposales/schemas";
-import { deriveVatRate, filterProposals, parseProposalFilters, toEventContext, toLineItem, type ProposalSummary } from "./model";
+import { deriveVatRate, filterProposals, parseProposalFilters, sumLineItems, toEventContext, toLineItem, type ProposalSummary } from "./model";
 
 describe("toLineItem", () => {
   const block: ProposalBlock = {
@@ -79,5 +79,20 @@ describe("proposal filters", () => {
 
   it("ignores unknown statuses and caps the query length", () => {
     expect(parseProposalFilters({ status: "bogus", q: "x".repeat(200) })).toEqual({ query: "x".repeat(100), status: null });
+  });
+});
+
+describe("sumLineItems", () => {
+  const block: ProposalBlock = { uuid: "b", type: "product-block", content_id: 1, currency: "EUR", quantity: 20, unit_value_with_discount_without_tax: 900, unit_value_with_discount_with_tax: 1008 };
+  const coffee = toLineItem(block)!;
+  const upgrade = toLineItem({ ...block, quantity: 40, unit_value_with_discount_without_tax: 4000, unit_value_with_discount_with_tax: 4480 })!;
+
+  it("adds the line totals on both VAT bases", () => {
+    expect(sumLineItems([coffee, upgrade])).toEqual({ exclVat: 178000, inclVat: 199360 });
+  });
+
+  it("is null on a basis where a line has no price, never a partial sum", () => {
+    const unpriced = toLineItem({ ...block, unit_value_with_discount_without_tax: null })!;
+    expect(sumLineItems([coffee, unpriced])).toEqual({ exclVat: null, inclVat: 20160 + 20160 });
   });
 });

@@ -8,7 +8,7 @@ export function Table({ className, footer, ...props }: ComponentProps<"table"> &
   return (
     <div className="rounded-xl bg-surface-2 p-2">
       <div className="overflow-x-auto">
-        <table className={cn("w-full min-w-[32rem] text-sm", className)} {...props} />
+        <table className={cn("w-full min-w-[28rem] text-sm", className)} {...props} />
       </div>
       {footer}
     </div>

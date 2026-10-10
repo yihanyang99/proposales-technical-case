@@ -19,7 +19,11 @@ import { listProposalSummaries } from "@/lib/proposals/service";
 export default function Home({ searchParams }: PageProps<"/">) {
   return (
     <Page>
-      <PageHeader className="mb-6" title="Proposals" />
+      <PageHeader
+        className="mb-6"
+        title="Proposals"
+        description="Pick a proposal to let AI find revenue opportunities in the hotel catalog."
+      />
       <Suspense fallback={<ProposalListSkeleton />}>
         <ProposalList searchParams={searchParams} />
       </Suspense>

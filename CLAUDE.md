@@ -94,7 +94,8 @@ step-by-step plan.
   `#292929`, `subtle` `#919191` for **large** text only (small secondary text uses `muted` `#6b6b6b`
   for contrast), and `surface-inverse` `#111f1e` for dark sections. The visual language follows
   Proposales: a floating glass header bar (`surface-glass` + backdrop blur), **no borders** (separate with
-  surface contrast and spacing; the only exception is the `divider` line above totals in `Totals`),
+  surface contrast and spacing; the only exceptions are the `divider` line above totals in `Totals`
+  and between the categories inside the hotel catalog card),
   no extra background fills for sub-sections, pill-shaped controls, monochrome, colour only for meaning
   (`success`, `failure`), Switzer font.
 - Components accept `className` for layout tweaks (width, margin) and are combined with `cn()` from

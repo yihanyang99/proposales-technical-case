@@ -43,23 +43,37 @@ export function Chip({
   );
 }
 
-/** Single-choice pills inside a form, e.g. a dismissal reason. Native radios, so keyboard and screen readers work. */
-export function ChoiceGroup({ legend, children, className }: { legend: string; children: ReactNode; className?: string }) {
+/** Choice pills inside a form, e.g. a dismissal reason. Native radios or checkboxes, so keyboard and screen readers work. */
+export function ChoiceGroup({
+  legend,
+  hideLegend = false,
+  children,
+  className,
+}: {
+  legend: string;
+  /** Keep the legend for screen readers only, when the chips speak for themselves. */
+  hideLegend?: boolean;
+  children: ReactNode;
+  className?: string;
+}) {
   return (
     <fieldset className={className}>
-      <legend className="mb-2 text-sm font-medium text-heading">{legend}</legend>
+      <legend className={cn(hideLegend ? "sr-only" : "mb-2 text-sm font-medium text-heading")}>{legend}</legend>
       <div className="flex flex-wrap gap-2">{children}</div>
     </fieldset>
   );
 }
 
 export function ChoiceChip({
+  type = "radio",
   name,
   value,
   checked,
   onChange,
   children,
 }: {
+  /** `radio` for one choice, `checkbox` for several. */
+  type?: "radio" | "checkbox";
   name: string;
   value: string;
   checked: boolean;
@@ -74,7 +88,7 @@ export function ChoiceChip({
         checked ? "bg-primary text-on-primary" : "bg-badge text-heading hover:bg-badge-hover",
       )}
     >
-      <input type="radio" name={name} value={value} checked={checked} onChange={onChange} className="sr-only" />
+      <input type={type} name={name} value={value} checked={checked} onChange={onChange} className="sr-only" />
       {children}
     </label>
   );

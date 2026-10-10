@@ -118,6 +118,12 @@ export function toLineItem(block: ProposalBlock): LineItem | null {
   };
 }
 
+/** Sum of the line totals on both VAT bases; null on a basis when any line has no price there. */
+export function sumLineItems(items: LineItem[]): { exclVat: number | null; inclVat: number | null } {
+  const sum = (values: (number | null)[]) => (values.some((v) => v === null) ? null : values.reduce<number>((total, v) => total + (v ?? 0), 0));
+  return { exclVat: sum(items.map((item) => item.totalExclVat)), inclVat: sum(items.map((item) => item.totalInclVat)) };
+}
+
 export function toProposalSummary(result: ProposalSearchResult): ProposalSummary {
   return {
     uuid: result.uuid,
