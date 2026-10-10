@@ -1,7 +1,9 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useActionState, useRef, useState } from "react";
 import {
+  applyProposalUpdate,
   clearFeedback,
   findOpportunities,
   saveFeedback,
@@ -25,6 +27,7 @@ import {
   Spinner,
 } from "@/components/ui";
 import { formatMoney, formatPercent } from "@/lib/format";
+import { proposalEditorUrl } from "@/lib/proposales/links";
 import {
   acceptChoice,
   DISMISS_REASON_LABEL,
@@ -64,11 +67,13 @@ function shortTitle(r: RecommendationView): string {
 
 type PanelProps = {
   proposalUuid: string;
+  /** Only drafts can be updated in Proposales. */
+  isDraft: boolean;
   currency: string | null;
   vatIncluded: boolean;
 };
 
-export function RecommendationsPanel({ proposalUuid, currency, vatIncluded }: PanelProps) {
+export function RecommendationsPanel({ proposalUuid, isDraft, currency, vatIncluded }: PanelProps) {
   const [state, action, pending] = useActionState<RecommendationsState, FormData>(findOpportunities, { status: "idle" });
 
   return (
@@ -109,6 +114,7 @@ export function RecommendationsPanel({ proposalUuid, currency, vatIncluded }: Pa
         <OpportunityList
           key={state.runId}
           proposalUuid={proposalUuid}
+          isDraft={isDraft}
           recommendations={state.recommendations}
           decisions={state.decisions}
           currency={currency}
@@ -128,6 +134,7 @@ export function RecommendationsPanel({ proposalUuid, currency, vatIncluded }: Pa
 
 function OpportunityList({
   proposalUuid,
+  isDraft,
   recommendations,
   decisions,
   currency,
@@ -140,6 +147,8 @@ function OpportunityList({
     Object.fromEntries(recommendations.map((r) => [r.id, initialChoice(r.quantity, r.maxQuantity, decisions[r.id])])),
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
+  /** Opportunities already written to the draft in this session. */
+  const [applied, setApplied] = useState<Set<string>>(() => new Set());
   const queues = useRef<Record<string, Promise<void>>>({});
 
   const byId = new Map(recommendations.map((r) => [r.id, r]));
@@ -224,7 +233,7 @@ function OpportunityList({
     if (upgrade) notes.push(`${shortTitle(r)} is priced at the ${r.productTitle} rate, not the upgraded ${upgrade.productTitle}.`);
   }
 
-  const toUpdate = recommendations.filter((r) => isAccepted(r.id));
+  const toUpdate = recommendations.filter((r) => isAccepted(r.id) && !applied.has(r.id));
   const lines = toUpdate.map((r) => {
     const { quantity } = choices[r.id];
     return {
@@ -258,6 +267,7 @@ function OpportunityList({
                 <RecommendationCard
                   recommendation={r}
                   choice={choice}
+                  inProposal={applied.has(r.id)}
                   error={errors[r.id]}
                   onAccept={() => accept(r)}
                   onUndo={() => reopen(r)}
@@ -294,57 +304,145 @@ function OpportunityList({
           </Alert>
         )}
         {currency && (
-          <SimulationSummary totals={totals} lines={lines.filter((line) => line.amount !== null)} currency={currency} vatIncluded={vatIncluded} />
+          <ProposalUpdate
+            proposalUuid={proposalUuid}
+            isDraft={isDraft}
+            totals={totals}
+            lines={lines.filter((line) => line.amount !== null)}
+            items={toUpdate.map((r) => ({ type: r.type, productId: r.productId, lineItemId: r.lineItemId, quantity: choices[r.id].quantity }))}
+            currency={currency}
+            vatIncluded={vatIncluded}
+            onApplied={() => setApplied((current) => new Set([...current, ...toUpdate.map((r) => r.id)]))}
+          />
         )}
       </div>
     </div>
   );
 }
 
-function SimulationSummary({
+type UpdateLine = { id: string; label: string; vatRate: number | null; amount: number | null };
+type UpdateItem = { type: RecommendationView["type"]; productId: number; lineItemId: string | null; quantity: number };
+
+/** What will go into the draft, with its potential revenue, and "Update draft in Proposales" after a confirmation. */
+function ProposalUpdate({
+  proposalUuid,
+  isDraft,
   totals,
   lines,
+  items,
   currency,
   vatIncluded,
+  onApplied,
 }: {
+  proposalUuid: string;
+  isDraft: boolean;
   totals: SimulationTotals;
-  lines: { id: string; label: string; vatRate: number | null; amount: number | null }[];
+  lines: UpdateLine[];
+  items: UpdateItem[];
   currency: string;
   vatIncluded: boolean;
+  onApplied: () => void;
 }) {
+  const router = useRouter();
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [updated, setUpdated] = useState(false);
   const money = (minor: number | null) => formatMoney(minor, currency);
+  const confirm = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await applyProposalUpdate({ proposalUuid, items });
+      setConfirming(false);
+      if (result.ok) {
+        setUpdated(true);
+        onApplied();
+        router.refresh();
+      } else setError(result.message);
+    } catch {
+      setError("The update could not be sent. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <Card className="p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h3 className="font-medium">Potential revenue</h3>
         <span className="text-xs text-muted">Items {vatIncluded ? "incl." : "excl."} VAT</span>
       </div>
-      {totals.selectedCount === 0 ? (
-        <p className="mt-2 text-sm text-muted">Add opportunities to see what they could add.</p>
+      {updated && (
+        <p role="status" className="mt-2 text-sm text-body">
+          Draft updated in Proposales.{" "}
+          <a href={proposalEditorUrl(proposalUuid)} target="_blank" rel="noreferrer" className="font-medium text-heading underline underline-offset-2">
+            Open proposal
+          </a>
+        </p>
+      )}
+      {items.length === 0 ? (
+        !updated && <p className="mt-2 text-sm text-muted">Add opportunities to include them in this proposal.</p>
       ) : (
-        <dl className="mt-3 space-y-2 text-sm">
-          {lines.map((line) => (
-            <div key={line.id} className="flex justify-between gap-4">
-              <dt className="text-body">
-                {line.label}
-                {line.vatRate !== null && <span className="mt-0.5 block text-xs text-muted">{formatPercent(line.vatRate)} VAT</span>}
-              </dt>
-              <dd className="shrink-0 whitespace-nowrap text-body tabular-nums">{money(line.amount)}</dd>
+        <>
+          <dl className="mt-3 space-y-2 text-sm">
+            {lines.map((line) => (
+              <div key={line.id} className="flex justify-between gap-4">
+                <dt className="text-body">
+                  {line.label}
+                  <span className="mt-0.5 block text-xs text-muted">
+                    Optional for the customer
+                    {line.vatRate !== null && ` · ${formatPercent(line.vatRate)} VAT`}
+                  </span>
+                </dt>
+                <dd className="shrink-0 whitespace-nowrap text-body tabular-nums">{money(line.amount)}</dd>
+              </div>
+            ))}
+            <div className="flex justify-between gap-4 border-t border-divider pt-3 text-muted">
+              <dt>Subtotal (excl. VAT)</dt>
+              <dd className="tabular-nums">{money(totals.exclVat)}</dd>
             </div>
-          ))}
-          <div className="flex justify-between gap-4 border-t border-divider pt-3 text-muted">
-            <dt>Subtotal (excl. VAT)</dt>
-            <dd className="tabular-nums">{money(totals.exclVat)}</dd>
-          </div>
-          <div className="flex justify-between gap-4 text-muted">
-            <dt>VAT</dt>
-            <dd className="tabular-nums">{money(totals.vat)}</dd>
-          </div>
-          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 pt-2 text-base font-semibold text-heading">
-            <dt>Total (incl. VAT)</dt>
-            <dd className="ml-auto tabular-nums">{money(totals.inclVat)}</dd>
-          </div>
-        </dl>
+            <div className="flex justify-between gap-4 text-muted">
+              <dt>VAT</dt>
+              <dd className="tabular-nums">{money(totals.vat)}</dd>
+            </div>
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 pt-2 text-base font-semibold text-heading">
+              <dt>Total (incl. VAT)</dt>
+              <dd className="ml-auto tabular-nums">{money(totals.inclVat)}</dd>
+            </div>
+          </dl>
+
+          {!isDraft ? (
+            <p className="mt-4 text-xs text-muted">Only draft proposals can be updated. Create a new version in Proposales first.</p>
+          ) : confirming ? (
+            <div className="mt-4 space-y-3 border-t border-divider pt-4 text-sm">
+              <div>
+                <p className="font-medium text-heading">
+                  Add {items.length} optional {items.length === 1 ? "extra" : "extras"} to the draft?
+                </p>
+                <p className="mt-0.5 text-xs text-muted">Nothing is sent to the customer.</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" onClick={confirm} disabled={busy}>
+                  {busy && <Spinner />}
+                  Confirm
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setConfirming(false)} disabled={busy}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Button size="sm" className="mt-4 w-full" onClick={() => setConfirming(true)}>
+              Update draft in Proposales
+            </Button>
+          )}
+          {error && (
+            <p role="alert" className="mt-3 text-xs text-failure">
+              {error}
+            </p>
+          )}
+        </>
       )}
     </Card>
   );
@@ -474,6 +572,7 @@ function DismissForm({ id, onDismiss, onCancel }: { id: string; onDismiss: (reas
 function RecommendationCard({
   recommendation: r,
   choice,
+  inProposal,
   error,
   onAccept,
   onUndo,
@@ -485,6 +584,8 @@ function RecommendationCard({
 }: {
   recommendation: RecommendationView;
   choice: Exclude<Choice, { status: "dismissed" }>;
+  /** Already written to the draft in this session. */
+  inProposal: boolean;
   error: string | undefined;
   onAccept: () => void;
   onUndo: () => void;
@@ -510,33 +611,37 @@ function RecommendationCard({
             {FIT_LABEL[r.confidence]}
           </span>
         </div>
-        {!dismissing && (
-          <div className="flex items-center gap-2">
-            {!accepted && (
-              <Button size="sm" variant="ghost" onClick={onStartDismiss}>
-                Not a fit
+        {inProposal ? (
+          <Badge tone="success">In proposal</Badge>
+        ) : (
+          !dismissing && (
+            <div className="flex items-center gap-2">
+              {!accepted && (
+                <Button size="sm" variant="ghost" onClick={onStartDismiss}>
+                  Not a fit
+                </Button>
+              )}
+              <Button
+                size="sm"
+                variant={accepted ? "primary" : "soft"}
+                aria-pressed={accepted}
+                aria-label={accepted ? "Added, select to remove" : undefined}
+                onClick={accepted ? onUndo : onAccept}
+              >
+                <svg aria-hidden="true" viewBox="0 0 16 16" className="-ml-1 size-4">
+                  <path
+                    d={accepted ? "M3.5 8.5l3 3 6-7" : "M8 3.5v9M3.5 8h9"}
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                {accepted ? "Added" : "Add to proposal"}
               </Button>
-            )}
-            <Button
-              size="sm"
-              variant={accepted ? "primary" : "soft"}
-              aria-pressed={accepted}
-              aria-label={accepted ? "Added, select to remove" : undefined}
-              onClick={accepted ? onUndo : onAccept}
-            >
-              <svg aria-hidden="true" viewBox="0 0 16 16" className="-ml-1 size-4">
-                <path
-                  d={accepted ? "M3.5 8.5l3 3 6-7" : "M8 3.5v9M3.5 8h9"}
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              {accepted ? "Added" : "Add to proposal"}
-            </Button>
-          </div>
+            </div>
+          )
         )}
       </div>
       <p className="mt-3 font-medium text-heading">{fullTitle(r)}</p>
@@ -572,9 +677,10 @@ function RecommendationCard({
               max={r.maxQuantity}
               onChange={onQuantity}
               label={`quantity for ${r.productTitle}`}
+              disabled={inProposal}
             />
           </div>
-          {edited && (
+          {edited && !inProposal && (
             <button
               type="button"
               onClick={() => onQuantity(r.quantity)}

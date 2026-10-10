@@ -3,10 +3,14 @@
 import { z } from "zod";
 import { feedbackInputSchema, feedbackKeySchema, toFeedbackRecord, type Decision } from "@/lib/feedback/model";
 import { FeedbackStoreError, getFeedbackStore } from "@/lib/feedback/store";
+import { ProposalesApiError } from "@/lib/proposales/client";
 import { describeError, isNotFound } from "@/lib/proposales/errors";
+import { applyDraftUpdate } from "@/lib/proposals/draft-service";
+import type { DraftPlanError } from "@/lib/proposals/draft-update";
 import { generateRecommendations, RecommendationError } from "@/lib/recommendations/engine";
 import type { Confidence, RecommendationType } from "@/lib/recommendations/model";
-import { MAX_QUANTITY, type PricedOpportunity } from "@/lib/revenue/simulation";
+import { RECOMMENDATION_TYPES } from "@/lib/recommendations/model";
+import { MAX_QUANTITY, MIN_QUANTITY, type PricedOpportunity } from "@/lib/revenue/simulation";
 
 export type RecommendationView = {
   id: string;
@@ -144,5 +148,58 @@ export async function clearFeedback(input: unknown): Promise<FeedbackResult> {
     return { ok: true };
   } catch (error) {
     return feedbackError(error);
+  }
+}
+
+const draftUpdateSchema = z.object({
+  proposalUuid: z.guid(),
+  items: z
+    .array(
+      z.object({
+        type: z.enum(RECOMMENDATION_TYPES),
+        productId: z.number().int().positive(),
+        lineItemId: z.string().max(100).nullable(),
+        quantity: z.number().int().min(MIN_QUANTITY).max(MAX_QUANTITY),
+      }),
+    )
+    .min(1)
+    .max(3),
+});
+
+const DRAFT_ERROR_MESSAGE: Record<DraftPlanError, string> = {
+  not_a_draft: "Only draft proposals can be updated. Create a new version in Proposales first.",
+  unknown_product: "A product is no longer in the hotel catalog. Find opportunities again.",
+  unknown_line_item: "The proposal has changed in Proposales. Find opportunities again.",
+  already_in_proposal: "A product is already in the proposal. Find opportunities again.",
+  line_item_mismatch: "The proposal has changed in Proposales. Find opportunities again.",
+  price_unavailable: "A product has no list price, so it can't be added.",
+  currency_mismatch: "A product is priced in a different currency than the proposal.",
+  invalid_quantity: "A quantity is not valid.",
+  not_an_upgrade: "An upgrade is no longer more expensive than the current item. Find opportunities again.",
+  conflicting_changes: "Two upgrades are for the same line. Keep only one of them.",
+};
+
+export type DraftApplyResult = { ok: true } | { ok: false; message: string };
+
+function draftApiError(error: unknown): { ok: false; message: string } {
+  if (error instanceof ProposalesApiError && error.kind === "conflict") {
+    return { ok: false, message: "Proposales can't update this proposal right now (it may no longer be a draft). Reload and try again." };
+  }
+  if (isNotFound(error)) return { ok: false, message: "This proposal no longer exists." };
+  return { ok: false, message: describeError(error) };
+}
+
+/**
+ * Writes the confirmed change to the draft in Proposales. Called only from the confirmation
+ * step; it never sends or publishes the proposal.
+ */
+export async function applyProposalUpdate(input: unknown): Promise<DraftApplyResult> {
+  const parsed = draftUpdateSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, message: "Invalid update." };
+  try {
+    const result = await applyDraftUpdate(parsed.data.proposalUuid, parsed.data.items);
+    return result.ok ? result : { ok: false, message: DRAFT_ERROR_MESSAGE[result.error] };
+  } catch (error) {
+    return draftApiError(error);
   }
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ContentItem } from "@/lib/proposales/schemas";
-import { groupByCategory, joinCatalog, pickLocalized } from "./model";
+import { groupByCategory, isUpgradeSupplement, joinCatalog, pickLocalized, upgradeSupplementTitle } from "./model";
 import type { RateCard } from "./rate-card";
 
 const card: RateCard = {
@@ -65,5 +65,16 @@ describe("groupByCategory", () => {
   it("orders categories and puts uncategorised products last", () => {
     const { products } = joinCatalog([item(99, { en: "Mystery" }), item(11, { en: "Room" })], card, "en");
     expect(groupByCategory(products).map((group) => group.category)).toEqual(["accommodation", null]);
+  });
+});
+
+describe("upgrade supplements", () => {
+  it("are recognised by their title and hidden from the catalog", () => {
+    const title = upgradeSupplementTitle("Standard Double Room", "Superior Double Room");
+    expect(title).toBe("Upgrade: Standard Double Room → Superior Double Room");
+    expect(isUpgradeSupplement(title)).toBe(true);
+    expect(isUpgradeSupplement("Upgrade package")).toBe(false);
+    const { products } = joinCatalog([item(11, { en: "Room" }), item(12, { en: title })], card, "en");
+    expect(products.map((p) => p.title)).toEqual(["Room"]);
   });
 });

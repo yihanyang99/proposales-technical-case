@@ -70,6 +70,7 @@ async function ProposalView({ params }: { params: PageProps<"/proposals/[uuid]">
       <LineItemsTable proposal={proposal} />
       <RecommendationsPanel
         proposalUuid={proposal.uuid}
+        isDraft={proposal.status === "draft"}
         currency={proposal.currency}
         vatIncluded={proposal.vatIncluded}
       />

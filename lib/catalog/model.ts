@@ -39,9 +39,25 @@ export function pickLocalized(text: Record<string, string>, language: string): s
   return value?.trim() || null;
 }
 
+const SUPPLEMENT_PREFIX = "Upgrade: ";
+
+/**
+ * Library title of the product that upgrades one item to another (e.g. a room type), added to a
+ * proposal as an optional extra priced at the difference. Shown to the customer.
+ */
+export function upgradeSupplementTitle(fromTitle: string, toTitle: string): string {
+  return `${SUPPLEMENT_PREFIX}${fromTitle} → ${toTitle}`;
+}
+
+/** Upgrade supplements only exist to carry an upgrade in a proposal, so the catalog and the AI never see them. */
+export function isUpgradeSupplement(title: string): boolean {
+  return title.startsWith(SUPPLEMENT_PREFIX) && title.includes(" → ");
+}
+
 export function joinCatalog(items: ContentItem[], card: RateCard, language: string): Catalog {
   const entries = new Map(card.products.map((entry) => [entry.variation_id, entry]));
-  const products = items.map((item): CatalogProduct => {
+  const offered = items.filter((item) => !isUpgradeSupplement(pickLocalized(item.title, language) ?? ""));
+  const products = offered.map((item): CatalogProduct => {
     const entry = entries.get(item.variation_id);
     return {
       productId: item.product_id,
