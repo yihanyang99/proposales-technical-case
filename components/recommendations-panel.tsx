@@ -5,7 +5,7 @@ import { findOpportunities, type RecommendationsState, type RecommendationView }
 import { Alert, Badge, Button, Card, EmptyState, LevelBars, QuantityInput, SectionTitle, Spinner } from "@/components/ui";
 import { formatMoney, formatPercent } from "@/lib/format";
 import { describeExtension } from "@/lib/recommendations/model";
-import { MIN_QUANTITY, opportunityAmount, simulateTotals } from "@/lib/revenue/simulation";
+import { MIN_QUANTITY, opportunityAmount, simulateTotals, toggleSelection } from "@/lib/revenue/simulation";
 
 const TYPE_LABEL: Record<RecommendationView["type"], string> = {
   cross_sell: "Cross-sell",
@@ -20,6 +20,10 @@ const CONFIDENCE_LABEL: Record<RecommendationView["confidence"], string> = {
   medium: "Medium confidence",
   high: "High confidence",
 };
+
+function shortTitle(r: RecommendationView): string {
+  return r.type === "cross_sell" ? `Add ${r.productTitle}` : r.type === "upgrade" ? `Upgrade to ${r.productTitle}` : `Extend ${r.productTitle}`;
+}
 
 type PanelProps = {
   proposalUuid: string;
@@ -99,6 +103,15 @@ function OpportunityList({
   );
   const update = (id: string, change: Partial<Choice>) =>
     setChoices((current) => ({ ...current, [id]: { ...current[id], ...change } }));
+  const toggle = (r: RecommendationView) => setChoices((current) => toggleSelection(current, r.id, r.conflictsWith));
+
+  const alternativesOf = (r: RecommendationView) =>
+    recommendations.filter((other) => r.conflictsWith.includes(other.id)).map(shortTitle);
+  const pricingNote = (r: RecommendationView) => {
+    if (r.type !== "extension" || !choices[r.id].selected) return null;
+    const upgrade = recommendations.find((o) => o.type === "upgrade" && o.lineItemId === r.lineItemId && choices[o.id].selected);
+    return upgrade ? `Priced at the ${r.productTitle} rate, not the upgraded ${upgrade.productTitle}.` : null;
+  };
 
   const totals = simulateTotals(
     currentTotal,
@@ -116,6 +129,9 @@ function OpportunityList({
             <RecommendationCard
               recommendation={recommendation}
               choice={choices[recommendation.id]}
+              alternatives={alternativesOf(recommendation)}
+              pricingNote={pricingNote(recommendation)}
+              onToggle={() => toggle(recommendation)}
               onChange={(change) => update(recommendation.id, change)}
             />
           </li>
@@ -178,10 +194,16 @@ function formatCalculation(uplift: NonNullable<RecommendationView["uplift"]>, qu
 function RecommendationCard({
   recommendation: r,
   choice,
+  alternatives,
+  pricingNote,
+  onToggle,
   onChange,
 }: {
   recommendation: RecommendationView;
   choice: Choice;
+  alternatives: string[];
+  pricingNote: string | null;
+  onToggle: () => void;
   onChange: (change: Partial<Choice>) => void;
 }) {
   const { quantity, selected } = choice;
@@ -210,13 +232,17 @@ function RecommendationCard({
           className={selected ? undefined : "bg-surface-1"}
           aria-pressed={selected}
           disabled={!r.uplift}
-          onClick={() => onChange({ selected: !selected })}
+          onClick={onToggle}
         >
           {selected ? "Included" : "Include"}
         </Button>
       </div>
       <p className="mt-3 font-medium text-heading">{title}</p>
       <p className="mt-1 text-sm">{r.explanation}</p>
+      {alternatives.length > 0 && (
+        <p className="mt-2 text-xs text-muted">Alternative to {alternatives.join(" and ")}: only one can be included.</p>
+      )}
+      {pricingNote && <p className="mt-2 text-xs text-muted">{pricingNote}</p>}
       <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         {r.uplift ? (
           <div>

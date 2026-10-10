@@ -416,6 +416,13 @@ deterministically calculate the potential additional revenue for each one and fo
 - Vitest covers the revenue math, the simulation, the recommendation validation and quantity
   labels, the catalog join, the proposal model, and the Proposales client's error mapping
   (with a fake `fetch`). `server-only` is aliased to an empty module in `vitest.config.mts`.
+- **Conflicting opportunities.** The model marks alternatives (`conflictsWith`, e.g. two catering
+  options for the same slot). Validation adds the structural ones it can't miss (two upgrades of
+  the same line item, an upgrade and a cross-sell of the same product), ignores references to
+  dropped or unknown suggestions and makes the links symmetric. Including one alternative removes
+  the other (`toggleSelection`), and the card says "Alternative to …: only one can be included".
+  An upgrade and an extension of the same line stay combinable; when both are included, the
+  extension notes that it is priced at the original rate, not the upgrade.
 - Also on this branch: `refactor: move vat column next to item in line items`.
 
 **Status:** DONE
@@ -529,3 +536,5 @@ deterministically calculate the potential additional revenue for each one and fo
   OpenAI spending limit (code review).
 - Step 6: Opportunity selection, quantity editing and a running potential total; Vitest set up
   with 65 tests covering revenue, validation, catalog, proposal model and client error mapping.
+- Step 6: Conflicting opportunities: the model's judgement plus structural rules; alternatives
+  can't be included together, and an extension notes when it is priced below an included upgrade.

@@ -18,6 +18,8 @@ const catalog = [
   priced(3, "Coffee Break", "food_and_beverage", 900),
   priced(4, "Spa Access", "other", 3500),
   priced(5, "Business Lunch", "food_and_beverage", 3200),
+  priced(6, "Junior Suite", "accommodation", 26000),
+  priced(7, "Three-Course Dinner", "food_and_beverage", 5800),
 ];
 
 const roomLine: LineItem = {
@@ -45,6 +47,7 @@ const raw = (overrides: Partial<Raw>): Raw => ({
   quantityRationale: "80 guests",
   explanation: "Fits the event.",
   confidence: "high",
+  conflictsWith: [],
   ...overrides,
 });
 
@@ -101,6 +104,48 @@ describe("validateRecommendations", () => {
 
   it("returns an empty result for empty model output", () => {
     expect(run([])).toEqual({ recommendations: [], dropped: [] });
+  });
+});
+
+describe("conflicts", () => {
+  const conflictsOf = (recommendations: Raw[]) =>
+    Object.fromEntries(run(recommendations).recommendations.map((r) => [r.id, r.conflictsWith]));
+
+  it("links two upgrades of the same line item, even when the model misses it", () => {
+    expect(
+      conflictsOf([
+        raw({ type: "upgrade", productId: 2, lineItemId: "line-room" }),
+        raw({ type: "upgrade", productId: 6, lineItemId: "line-room" }),
+      ]),
+    ).toEqual({ "upgrade:2:line-room": ["upgrade:6:line-room"], "upgrade:6:line-room": ["upgrade:2:line-room"] });
+  });
+
+  it("links an upgrade and a cross-sell of the same product", () => {
+    expect(
+      conflictsOf([raw({ type: "upgrade", productId: 2, lineItemId: "line-room" }), raw({ productId: 2, quantity: 5 })]),
+    ).toEqual({ "upgrade:2:line-room": ["cross_sell:2:"], "cross_sell:2:": ["upgrade:2:line-room"] });
+  });
+
+  it("makes the model's conflicts symmetric", () => {
+    expect(conflictsOf([raw({ productId: 3 }), raw({ productId: 7, conflictsWith: [0] })])).toEqual({
+      "cross_sell:3:": ["cross_sell:7:"],
+      "cross_sell:7:": ["cross_sell:3:"],
+    });
+  });
+
+  it("ignores conflicts with itself, dropped or unknown suggestions", () => {
+    expect(
+      conflictsOf([raw({ productId: 3, conflictsWith: [0, 1, 99, -1, 0.5] }), raw({ productId: 999 }), raw({ productId: 7 })]),
+    ).toEqual({ "cross_sell:3:": [], "cross_sell:7:": [] });
+  });
+
+  it("keeps an upgrade and an extension of the same line combinable", () => {
+    expect(
+      conflictsOf([
+        raw({ type: "upgrade", productId: 2, lineItemId: "line-room" }),
+        raw({ type: "extension", productId: 1, lineItemId: "line-room", quantity: 20 }),
+      ]),
+    ).toEqual({ "upgrade:2:line-room": [], "extension:1:line-room": [] });
   });
 });
 

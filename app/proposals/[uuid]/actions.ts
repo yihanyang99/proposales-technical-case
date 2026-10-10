@@ -12,6 +12,7 @@ export type RecommendationView = {
   productTitle: string;
   productDescription: string | null;
   /** Line item being upgraded or extended. */
+  lineItemId: string | null;
   lineItemTitle: string | null;
   quantity: number;
   /** Highest quantity the salesperson may set (an upgrade can't exceed the booked units). */
@@ -20,6 +21,8 @@ export type RecommendationView = {
   quantityLabel: string | null;
   explanation: string;
   confidence: Confidence;
+  /** Ids of alternatives that can't be included together with this one. */
+  conflictsWith: string[];
   /**
    * Potential additional revenue (minor units) and the numbers it was calculated from, on the
    * proposal's own VAT basis (like its line items).
@@ -58,6 +61,7 @@ export async function findOpportunities(_previous: RecommendationsState, formDat
         type: r.type,
         productTitle: r.product.title,
         productDescription: r.product.description,
+        lineItemId: r.lineItem?.id ?? null,
         lineItemTitle: r.lineItem?.title ?? null,
         quantity: r.quantity,
         maxQuantity: r.type === "upgrade" ? (r.lineItem?.quantity ?? r.quantity) : MAX_QUANTITY,
@@ -65,6 +69,7 @@ export async function findOpportunities(_previous: RecommendationsState, formDat
         quantityLabel: r.quantityLabel,
         explanation: r.explanation,
         confidence: r.confidence,
+        conflictsWith: r.conflictsWith,
         uplift: r.uplift && {
           amount: incl ? r.uplift.amountInclVat : r.uplift.amountExclVat,
           vatIncluded: incl,

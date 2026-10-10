@@ -25,6 +25,7 @@ export function mockModelOutput(proposal: ProposalDetail, catalog: CatalogProduc
       quantityRationale: crossSell.price.unit === "person" ? `${guests} guests` : "1 unit",
       explanation: `Mock suggestion: ${crossSell.title} complements this event and is not in the proposal yet.`,
       confidence: "high",
+      conflictsWith: [],
     });
   }
 
@@ -43,6 +44,7 @@ export function mockModelOutput(proposal: ProposalDetail, catalog: CatalogProduc
         quantityRationale: `${line.quantity ?? 1} rooms`,
         explanation: `Mock suggestion: upgrade ${line.title} to ${better.title} for a better guest experience.`,
         confidence: "medium",
+        conflictsWith: [],
       });
       break;
     }
@@ -65,6 +67,7 @@ export function mockModelOutput(proposal: ProposalDetail, catalog: CatalogProduc
       })(),
       explanation: `Mock suggestion: extend ${extendable.title} so guests can arrive the evening before.`,
       confidence: "low",
+      conflictsWith: [],
     });
   }
 
