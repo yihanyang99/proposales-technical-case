@@ -16,7 +16,7 @@ acceptance criteria, update this file, make one focused commit (with user approv
 | 4 | Product Catalog Integration | DONE |
 | 5 | AI Recommendation Engine | DONE |
 | 6 | Revenue Simulation | DONE |
-| 7 | Recommendation Feedback Loop | IN REVIEW |
+| 7 | Recommendation Feedback Loop | DONE |
 | 8 | Dashboard UI | TODO |
 | 9 | Testing & Vercel Deployment | TODO |
 
@@ -506,7 +506,8 @@ structured feedback, and update the draft in Proposales.
   planner (pricing, supplements, refusals, block list), supplement filter, editor link — 102
   tests in 10 files.
 
-**Status:** IN REVIEW (needs one confirmed live update with an upgrade supplement)
+**Status:** DONE (verified live: feedback in Neon, and draft updates with optional extras, an
+upgrade supplement and flexible quantities)
 
 ---
 

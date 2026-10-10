@@ -210,9 +210,9 @@ Results of the Step 2 investigation (2026-10-09).
   - `optional: true` creates an optional block (`optional_picked: false`). **Unpicked optional
     blocks are not counted** in `value_without_tax` / `value_with_tax`.
   - Optional blocks for content created with `POST /v3/content` (the upgrade supplement) work
-    like any other product block; the title comes from the content library.
-  - `quantity_editable` came back empty on optional blocks added by the app; not yet confirmed
-    whether `quantity_editable: true` in the update is stored.
+    like any other product block; the title comes from the content library. A second upgrade of
+    the same rooms reuses the existing supplement (found by title).
+  - `quantity_editable: true` is stored, so the customer can change the quantity.
 - **Verification status:** Verified (live) for create and for `PATCH` with `blocks`.
 
 ## Proposal Versioning
